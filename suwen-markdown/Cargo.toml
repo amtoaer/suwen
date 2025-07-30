@@ -1,0 +1,11 @@
+[package]
+name = "suwen_markdown"
+version = { workspace = true }
+edition = { workspace = true }
+publish = { workspace = true }
+
+[dependencies]
+pulldown-cmark = { workspace = true }
+anyhow = { workspace = true }
+autocorrect = { workspace = true }
+syntect = { workspace = true }

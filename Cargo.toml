@@ -1,0 +1,21 @@
+[workspace]
+members = ['suwen', "suwen-api", "suwen-markdown"]
+default-members = ['suwen']
+resolver = '2'
+
+[workspace.package]
+name = "suwen"
+version = "0.1.0"
+author = ["amtoaer <amtoaer@gmail.com>"]
+licence = "MIT"
+description = "A modern blogging platform built with Rust and Svelte"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+suwen_markdown = { path = "suwen-markdown" }
+
+anyhow = "1.0.98"
+autocorrect = "2.14.2"
+pulldown-cmark = "0.13.0"
+syntect = "5.2.0"
