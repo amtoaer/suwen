@@ -7,7 +7,7 @@
 	let activeTab = $state('主页');
 </script>
 
-<div class="px-8 py-4">
+<nav class="px-8 py-4">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-8">
 			{#each naviTabs as tab}
@@ -36,4 +36,4 @@
 			</div>
 		</div>
 	</div>
-</div>
+</nav>

@@ -5,7 +5,7 @@
 	let { avatar, title, description, socials } = $props();
 </script>
 
-<div class="px-8 pt-10 pb-4">
+<header class="px-8 pt-10 pb-4">
 	<div class="flex items-start justify-between mb-6">
 		<div class="flex items-start gap-6">
 			<Avatar class="w-30 h-30 border-4 border-white shadow-lg">
@@ -35,4 +35,4 @@
 			</Button>
 		</div>
 	</div>
-</div>
+</header>
