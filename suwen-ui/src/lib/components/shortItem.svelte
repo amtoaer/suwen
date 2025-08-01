@@ -1,14 +1,14 @@
 <script lang="ts">
-	let { title, image, width = 96, height = 96 } = $props();
+	let { key, title, image, width = 96, height = 96 } = $props();
 </script>
 
-<div class="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+<a class="w-24 h-24 rounded-lg overflow-hidden bg-gray-100" href={`/shorts/${key}`}>
 	<img
 		src={image}
 		alt={title}
 		{width}
 		{height}
-		class="w-full h-full object-cover"
+		class="w-full h-full object-cover sm:hover:scale-110 sm:transition-transform sm:duration-400 sm:ease-in-out"
 		draggable="false"
 	/>
-</div>
+</a>

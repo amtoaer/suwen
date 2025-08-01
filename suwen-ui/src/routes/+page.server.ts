@@ -2,14 +2,17 @@ export const load = async () => {
     return {
         shorts: [
             {
+                key: "6-29-nuclear-fusion",
                 title: "6.29 核聚变",
                 image: "https://ipfs.crossbell.io/ipfs/QmULs3E8hFzY5v7ECgrbGbbweZSChR4WzrrriRzGj7tHJ3?img-quality=75&img-format=auto&img-onerror=redirect&img-width=384"
             },
             {
+                key: "play-xianwei",
                 title: "品了品衔尾：龙之铃",
                 image: "https://ipfs.crossbell.io/ipfs/QmSn9VgcT8c3N2aEzq8fzmoVeS8bhNwrEEMEZa1Ni7YCiE?img-quality=75&img-format=auto&img-onerror=redirect&img-width=384"
             },
             {
+                key: "finally-mai",
                 title: "终于等到不知火舞了！",
                 image: "https://ipfs.crossbell.io/ipfs/QmZcQEyTeiFbxMjXJL68vHGgxPx74WJeoMCMefYPGPLGrZ?img-quality=75&img-format=auto&img-onerror=redirect&img-width=384"
             }

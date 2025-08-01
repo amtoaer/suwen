@@ -29,7 +29,7 @@ export const load = async () => {
 <h2>Content-Encoding</h2>
 <p>众所周知，HTTP 本身支持对响应体进行压缩，并提供 Content-Encoding 头来标识采用的压缩算法。考虑到使用 embed 的场景是托管静态文件，我们可以预先压缩静态文件，程序中仅打包压缩后的文件，当浏览器请求时直接返回压缩文件并设置相应的 Content-Encoding 头，让浏览器自行处理解压。这样就能两全其美，既缩小程序体积，又减少内存占用。</p>
 <p>最初我想 fork 一份 embed 进行修改，但一堆裸露的 cfg! 判断与宏拼接让我萌生退意：
-<img src="./attachments/Qma9efPHLAo9NT4ywTSm3s9bNpnfziyLkyBp3mab6gYopF?img-quality=75&amp;img-format=auto&amp;img-onerror=redirect&amp;img-width=3840" alt="embed" /></p>
+<img src="https://ipfs.crossbell.io/ipfs/Qma9efPHLAo9NT4ywTSm3s9bNpnfziyLkyBp3mab6gYopF?img-quality=75&img-format=auto&img-onerror=redirect&img-width=3840" alt="embed" /></p>
 <p>幸运的是，经过搜索我发现了一个与我需求类似的项目：<a href="https://github.com/SeriousBug/rust-embed-for-web">rust-embed-for-web</a>。该项目在 embed 基础上预先打包 gzip 和 br 两种压缩格式的文件，原始文件、gzip 压缩、br 压缩分别通过 <code>.data()</code>、<code>.data_gzip()</code>、<code>.data_br()</code> 访问，其中 <code>.data()</code> 必定存在，另外两个返回 <code>Option</code> 可通过宏参数控制。可以看出该项目同样会占用额外空间，只是采用预编译方式优化静态文件传输。要达到节约空间的目的，只需将 <code>.data()</code> 的返回值也改为 <code>Option</code>，并修改过程宏以支持是否存储源文件的配置。</p>
 <p>这个项目的代码比 embed 清晰许多，修改起来非常方便。在修改过程中我还顺便用 <code>enum_dispatch</code> 将动态派发替换为静态派发，应该会带来一些性能提升，具体变更可查看<a href="https://github.com/amtoaer/rust-embed-for-web/commit/b6eeb475cbe1ad5cae02d5373a1bba12ea58a869">这个提交</a>。</p>
 <hr />

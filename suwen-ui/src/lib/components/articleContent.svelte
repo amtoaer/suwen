@@ -63,15 +63,19 @@
 </script>
 
 <article class="prose max-w-4xl mx-auto">
-	<h2 class="text-center items-center relative text-3xl font-bold mb-8">
+	<h1 class="text-center text-xl sm:text-3xl">
 		{title}
-	</h2>
+	</h1>
 	<div class="flex items-center justify-center gap-4 text-sm text-gray-500">
 		<span>{publishedDate.toLocaleDateString('zh-CN')}</span>
 		{#if tags && tags.length > 0}
 			<div class="flex items-center gap-2">
 				{#each tags as tag}
-					<Badge variant="secondary" class="text-xs">#{tag}</Badge>
+					<Badge
+						variant="secondary"
+						class="text-xs bg-secondary/50 hover:bg-secondary text-secondary-foreground no-underline"
+						href="/tags/{tag}">#{tag}</Badge
+					>
 				{/each}
 			</div>
 		{/if}

@@ -14,8 +14,17 @@ publish = false
 
 [workspace.dependencies]
 suwen_markdown = { path = "suwen-markdown" }
+suwen_api = { path = "suwen-api" }
 
+axum = "0.8.4"
+axum-reverse-proxy = "1.0.3"
 anyhow = "1.0.98"
 autocorrect = "2.14.2"
 pulldown-cmark = "0.13.0"
 syntect = "5.2.0"
+tokio = "1.47.0"
+tower-http = { version = "0.6.6", features = [
+    "compression-zstd",
+    "compression-gzip",
+    "compression-br",
+] }

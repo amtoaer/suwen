@@ -1,20 +1,21 @@
 <script lang="ts">
-	import { ChevronRight } from '@lucide/svelte';
+	import { ChevronRight, BookImage } from '@lucide/svelte';
 	import ShortItem from './shortItem.svelte';
+
 	let { shorts } = $props();
 </script>
 
 <div class="mb-8">
 	<div class="flex items-center justify-between mb-4">
 		<h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-			<span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+			<BookImage class="size-4" />
 			图文
 		</h2>
 		<ChevronRight class="w-5 h-5 text-gray-400" />
 	</div>
 	<div class="flex gap-4">
 		{#each shorts as short}
-			<ShortItem image={short.image} title={short.title} />
+			<ShortItem key={short.key} image={short.image} title={short.title} />
 		{/each}
 	</div>
 </div>

@@ -1,27 +1,23 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { Avatar, AvatarImage } from '@/components/ui/avatar';
 	import { Bell, Settings, ChevronDown } from '@lucide/svelte';
-
+	import { page } from '$app/state';
 	let { avatar, naviTabs } = $props();
-	let activeTab = $state('主页');
 </script>
 
 <nav class="px-8 py-4">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-8">
 			{#each naviTabs as tab}
-				<button
-					onclick={() => {
-						activeTab = tab.name;
-						goto(tab.path);
-					}}
-					class="pb-2 text-sm font-medium border-b-2 transition-colors {activeTab === tab.name
+				<a
+					href={tab.url}
+					class="pb-2 text-sm font-medium border-b-2 transition-colors {page.url.pathname ===
+					tab.url
 						? 'text-red-500 border-red-500'
 						: 'text-gray-600 border-transparent hover:text-gray-900'}"
 				>
 					{tab.name}
-				</button>
+				</a>
 			{/each}
 		</div>
 		<div class="flex items-center gap-4">

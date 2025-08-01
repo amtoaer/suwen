@@ -6,3 +6,7 @@ publish = { workspace = true }
 
 [dependencies]
 suwen_markdown = { workspace = true }
+suwen_api = { workspace = true }
+
+axum = { workspace = true }
+tokio = { workspace = true }

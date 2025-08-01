@@ -4,18 +4,7 @@
 	import { Eye, MessageSquare } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let {
-		key,
-		image,
-		imageWidth = 400,
-		imageHeight = 200,
-		title,
-		description,
-		tags,
-		views,
-		comments,
-		publishedDate
-	} = $props();
+	let { key, image, title, description, tags, views, comments, publishedDate } = $props();
 
 	let formatDate = (date: Date) => {
 		const now = new Date();
@@ -34,17 +23,15 @@
 </script>
 
 <a href={`/articles/${key}`} class="block">
-	<Card class="overflow-hidden hover:shadow-lg transition-shadow !py-0">
-		<div class="relative">
+	<Card class="overflow-hidden hover:shadow-lg transition-shadow !py-0 group">
+		<span class="h-48 overflow-hidden">
 			<img
 				src={image}
 				alt={title}
-				width={imageWidth}
-				height={imageHeight}
-				class="w-full h-48 object-cover"
+				class="size-full object-cover sm:group-hover:scale-110 sm:transition-transform sm:duration-400 sm:ease-in-out"
 				draggable="false"
 			/>
-		</div>
+		</span>
 		<CardContent class="px-4 pb-4">
 			<h3 class="font-semibold text-gray-900 mb-2">{title}</h3>
 			<p class="text-gray-600 text-sm mb-3 line-clamp-2">
