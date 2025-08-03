@@ -1,0 +1,12 @@
+[package]
+name = "suwen_migration"
+version = { workspace = true }
+edition = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+name = "suwen_migration"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm-migration = { workspace = true }

@@ -8,5 +8,6 @@ publish = { workspace = true }
 suwen_markdown = { workspace = true }
 suwen_api = { workspace = true }
 
+anyhow = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }

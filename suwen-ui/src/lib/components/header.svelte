@@ -2,7 +2,7 @@
 	import { Avatar, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import { Rss } from '@lucide/svelte';
-	let { avatar, title, description, socials } = $props();
+	let { avatar, title, description, relatedLinks } = $props();
 </script>
 
 <header class="px-8 pt-10 pb-4">
@@ -15,15 +15,15 @@
 				<h1 class="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
 				<p class="text-gray-600 mt-2 mb-5">{description}</p>
 				<div class="flex items-center gap-3">
-					{#each socials as social}
+					{#each relatedLinks as relatedLink}
 						<Button
 							variant="ghost"
 							size="icon"
-							href={social.url}
-							aria-label={social.name}
+							href={relatedLink.url}
+							aria-label={relatedLink.name}
 							target="_blank"
 						>
-							<img src={social.icon} alt={social.name} class="w-4 h-4" />
+							<img src={relatedLink.icon} alt={relatedLink.name} class="w-4 h-4" />
 						</Button>
 					{/each}
 				</div>

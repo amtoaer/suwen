@@ -67,7 +67,7 @@
 		{title}
 	</h1>
 	<div class="flex items-center justify-center gap-4 text-sm text-gray-500">
-		<span>{publishedDate.toLocaleDateString('zh-CN')}</span>
+		<span>{new Date(publishedDate).toLocaleDateString('zh-CN')}</span>
 		{#if tags && tags.length > 0}
 			<div class="flex items-center gap-2">
 				{#each tags as tag}

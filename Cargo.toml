@@ -1,13 +1,16 @@
 [workspace]
-members = ['suwen', "suwen-api", "suwen-markdown"]
+members = [
+    'suwen',
+    "suwen-api",
+    "suwen-markdown",
+    "suwen-migration",
+    "suwen-entity",
+]
 default-members = ['suwen']
 resolver = '2'
 
 [workspace.package]
-name = "suwen"
 version = "0.1.0"
-author = ["amtoaer <amtoaer@gmail.com>"]
-licence = "MIT"
 description = "A modern blogging platform built with Rust and Svelte"
 edition = "2024"
 publish = false
@@ -15,16 +18,35 @@ publish = false
 [workspace.dependencies]
 suwen_markdown = { path = "suwen-markdown" }
 suwen_api = { path = "suwen-api" }
+suwen_migration = { path = "suwen-migration" }
+suwen_entity = { path = "suwen-entity" }
 
-axum = "0.8.4"
-axum-reverse-proxy = "1.0.3"
+axum-reverse-proxy = { version = "1.0.3", default-features = false }
+axum = { version = "0.8.4", features = ["macros"] }
 anyhow = "1.0.98"
 autocorrect = "2.14.2"
+chrono = { version = "0.4.41", features = ["serde"] }
+mime_guess = "2.0.5"
 pulldown-cmark = "0.13.0"
+regex = "1.11.1"
+sea-orm = { version = "1.1.0", default-features = false, features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-json",
+] }
+sea-orm-migration = "1.1.0"
+serde = "1.0.219"
+serde_json = "1.0.142"
+sha2 = "0.10.9"
 syntect = "5.2.0"
-tokio = "1.47.0"
+tokio = "1.47.1"
+tower = "0.5.2"
 tower-http = { version = "0.6.6", features = [
     "compression-zstd",
     "compression-gzip",
     "compression-br",
+    "fs",
 ] }
+yaml-rust2 = "0.10.3"

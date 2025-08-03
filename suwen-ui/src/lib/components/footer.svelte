@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '@/components/ui/button';
 
-	let { author, socials } = $props();
+	let { author, relatedLinks } = $props();
 </script>
 
 <footer class="mt-auto py-6 px-8">
@@ -15,15 +15,15 @@
 		</div>
 
 		<div class="flex items-center gap-4">
-			{#each socials as social}
+			{#each relatedLinks as relatedLink}
 				<Button
 					variant="ghost"
 					size="icon"
-					href={social.url}
-					aria-label={social.name}
+					href={relatedLink.url}
+					aria-label={relatedLink.name}
 					target="_blank"
 				>
-					<img src={social.icon} alt={social.name} class="w-4 h-4" />
+					<img src={relatedLink.icon} alt={relatedLink.name} class="w-4 h-4" />
 				</Button>
 			{/each}
 		</div>

@@ -6,6 +6,19 @@ publish = { workspace = true }
 
 
 [dependencies]
+suwen_migration = { workspace = true }
+suwen_entity = { workspace = true }
+suwen_markdown = { workspace = true }
+
+anyhow = { workspace = true }
 axum = { workspace = true }
 axum-reverse-proxy = { workspace = true }
+chrono = { workspace = true }
+mime_guess = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
 tower-http = { workspace = true }

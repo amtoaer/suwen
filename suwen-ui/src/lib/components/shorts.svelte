@@ -15,7 +15,7 @@
 	</div>
 	<div class="flex gap-4">
 		{#each shorts as short}
-			<ShortItem key={short.key} image={short.image} title={short.title} />
+			<ShortItem slug={short.slug} image={short.coverImages[0]} title={short.title} />
 		{/each}
 	</div>
 </div>

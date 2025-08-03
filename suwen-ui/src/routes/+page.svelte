@@ -4,12 +4,12 @@
 	import Articles from '@/components/articles.svelte';
 
 	let { data }: PageProps = $props();
-	let { title, description, shorts, articles } = data;
+	let { siteName, intro, shorts, articles } = data;
 </script>
 
 <svelte:head>
-	<title>{title}</title>
-	<meta name="description" content={description} />
+	<title>{siteName}</title>
+	<meta name="description" content={intro} />
 </svelte:head>
 
 <Shorts {shorts} />

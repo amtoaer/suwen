@@ -1,8 +1,8 @@
 <script lang="ts">
-	let { key, title, image, width = 96, height = 96 } = $props();
+	let { slug, title, image, width = 96, height = 96 } = $props();
 </script>
 
-<a class="w-24 h-24 rounded-lg overflow-hidden bg-gray-100" href={`/shorts/${key}`}>
+<a class="w-24 h-24 rounded-lg overflow-hidden bg-gray-100" href={`/shorts/${slug}`}>
 	<img
 		src={image}
 		alt={title}
