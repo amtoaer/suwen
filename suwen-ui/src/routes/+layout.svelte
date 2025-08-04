@@ -9,7 +9,7 @@
 	const { siteName, intro, avatarUrl, relatedLinks, displayName, tabs } = data;
 </script>
 
-<ProgressBar color="#7F57F1" zIndex={100} />
+<ProgressBar color="#7F57F1" displayThresholdMs={0} intervalTime={200} settleTime={200} />
 
 <div class="min-h-screen bg-white/80">
 	<div class="max-w-5xl mx-auto min-h-screen flex flex-col">
