@@ -4,7 +4,10 @@
 	import Articles from '@/components/articles.svelte';
 
 	let { data }: PageProps = $props();
-	let { siteName, intro, shorts, articles } = data;
+	let { siteName, intro } = data;
+
+	let shorts = $derived(data.shorts);
+	let articles = $derived(data.articles);
 </script>
 
 <svelte:head>
