@@ -10,8 +10,8 @@
 <Sortbar
 	sortTabs={[
 		{ name: '最新', query: '' },
-		{ name: '最热', query: 'hot' },
-		{ name: '最多评论', query: 'most-commented' }
+		{ name: '最热', query: 'trending' },
+		{ name: '最多评论', query: 'top-comments' }
 	]}
 />
 

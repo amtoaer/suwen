@@ -5,4 +5,4 @@
 	let { data }: PageProps = $props();
 </script>
 
-<ShortContent {...data} />
+<ShortContent {...data.short} />

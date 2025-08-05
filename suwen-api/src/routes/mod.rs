@@ -39,9 +39,8 @@ impl<'de> serde::Deserialize<'de> for UrlQuery {
         }
         if let Some(value) = map.get("sort") {
             match value.as_str() {
-                Some("latest") => sort = Some(content_metadata::Column::PublishedAt),
-                Some("popular") => sort = Some(content_metadata::Column::ViewCount),
-                Some("most-commented") => sort = Some(content_metadata::Column::CommentCount),
+                Some("trending") => sort = Some(content_metadata::Column::ViewCount),
+                Some("top-comments") => sort = Some(content_metadata::Column::CommentCount),
                 _ => {}
             }
         }

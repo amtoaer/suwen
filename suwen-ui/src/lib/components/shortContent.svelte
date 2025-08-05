@@ -7,7 +7,7 @@
 		CarouselNext
 	} from '@/components/ui/carousel';
 
-	let { images, title, content } = $props();
+	let { coverImages, title, content } = $props();
 </script>
 
 <article class="max-w-4xl mx-auto">
@@ -20,9 +20,9 @@
 	>
 		<CarouselPrevious class="top-1/2 left-4 z-10" />
 		<CarouselContent>
-			{#each images as image}
+			{#each coverImages as image}
 				<CarouselItem>
-					<img src={image} alt={title} loading="lazy" class="object-cover size-full" />
+					<img src={image} alt={title} class="object-cover size-full" />
 				</CarouselItem>
 			{/each}
 		</CarouselContent>

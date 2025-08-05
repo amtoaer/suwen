@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { ChevronRight, BookImage } from '@lucide/svelte';
-	import ShortItem from './shortItem.svelte';
 	import Sortbar from './sortbar.svelte';
 	import DetailShortItem from './detailShortItem.svelte';
 
@@ -10,16 +8,16 @@
 <Sortbar
 	sortTabs={[
 		{ name: '最新', query: '' },
-		{ name: '最热', query: 'hot' },
-		{ name: '最多评论', query: 'most-commented' }
+		{ name: '最热', query: 'trending' },
+		{ name: '最多评论', query: 'top-comments' }
 	]}
 />
 <div>
-	<div class="grid gap-3 grid-cols-1 sm:grid-cols-4">
+	<div class="grid grid-cols-1 sm:grid-cols-4 gap-8 sm:gap-5">
 		{#each shorts as short}
 			<DetailShortItem
-				key={short.key}
-				images={short.images}
+				slug={short.slug}
+				coverImages={short.coverImages}
 				title={short.title}
 				content={short.content}
 			/>
