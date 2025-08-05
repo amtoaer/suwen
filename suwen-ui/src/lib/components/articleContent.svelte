@@ -24,6 +24,11 @@
 
 	$effect(() => {
 		if (!contentElement || !content) return;
+		// 为所有的 video 添加 controls 属性
+		contentElement.querySelectorAll('video').forEach((video) => {
+			video.setAttribute('controls', 'true');
+		});
+		// 生成目录
 		const titles = contentElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
 		const res: TocItem[] = [];
 		const levelStack: number[] = [];
