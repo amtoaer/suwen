@@ -70,16 +70,8 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
                     url: "/".into(),
                 },
                 Tab {
-                    name: "文章".into(),
-                    url: "/articles".into(),
-                },
-                Tab {
-                    name: "短篇".into(),
+                    name: "图文".into(),
                     url: "/shorts".into(),
-                },
-                Tab {
-                    name: "关于".into(),
-                    url: "/about".into(),
                 },
             ]
             .into()),
@@ -89,17 +81,18 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         .exec(&transaction)
         .await?;
         let (articles, shorts) = suwen_markdown::importer::import_path(
-            &Path::new("/Users/amtoaer/Downloads/Zen/amtoaer/notes-markdown"),
+            &Path::new("/Users/amtoaer/Downloads/Zen/amtoaer/notes"),
             &suwen_markdown::importer::xlog::import_file,
         )?;
-        for article in articles {
+        let (len_articles, len_shorts) = (articles.len(), shorts.len());
+        for (idx, article) in articles.into_iter().enumerate() {
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(article.slug),
                 content_type: Set("article".into()),
                 cover_images: Set(article.cover_images.into()),
                 tags: Set(article.tags.into()),
-                view_count: Set(0),
-                comment_count: Set(0),
+                view_count: Set(idx as i32),
+                comment_count: Set(len_articles as i32 - idx as i32),
                 published_at: Set(Some(article.published_at)),
                 ..Default::default()
             })
@@ -116,14 +109,14 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
             .exec(&transaction)
             .await?;
         }
-        for short in shorts {
+        for (idx, short) in shorts.into_iter().enumerate() {
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(short.slug),
                 content_type: Set("gallery".into()),
                 cover_images: Set(short.cover_images.into()),
                 tags: Set(vec![].into()),
-                view_count: Set(0),
-                comment_count: Set(0),
+                view_count: Set(idx as i32),
+                comment_count: Set(len_shorts as i32 - idx as i32),
                 published_at: Set(Some(short.published_at)),
                 ..Default::default()
             })

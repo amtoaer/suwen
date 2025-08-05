@@ -47,6 +47,8 @@ pub struct Article {
     pub tags: Vec<String>,
     pub content: String,
     pub rendered_html: String,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
     pub published_at: DateTime<Local>,
 }
 
@@ -56,5 +58,7 @@ pub struct Short {
     pub title: String,
     pub cover_images: Vec<String>,
     pub content: String,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
     pub published_at: DateTime<Local>,
 }
