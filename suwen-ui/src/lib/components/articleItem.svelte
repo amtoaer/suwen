@@ -24,7 +24,7 @@
 </script>
 
 <a href={`/articles/${slug}`} class="block">
-	<Card class="overflow-hidden hover:shadow-lg transition-shadow !py-0 group">
+	<Card class="overflow-hidden hover:shadow-lg transition-shadow !py-0 group size-full">
 		<span class="h-48 overflow-hidden">
 			<img
 				src={coverImages[0]}

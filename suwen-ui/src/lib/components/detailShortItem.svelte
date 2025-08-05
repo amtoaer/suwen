@@ -8,12 +8,12 @@
 		CarouselNext
 	} from '@/components/ui/carousel';
 
-	let { key, images, title, content } = $props();
+	let { slug, coverImages, title, content } = $props();
 	let api = $state<CarouselAPI>();
 </script>
 
-<div>
-	<a href={`/shorts/${key}`} draggable="false">
+<a href={`/shorts/${slug}`} draggable="false">
+	<div class="size-full">
 		<Carousel
 			setApi={(emblaApi) => (api = emblaApi)}
 			class="relative mb-5 group rounded-md overflow-hidden"
@@ -33,9 +33,9 @@
 				}}
 			/>
 			<CarouselContent class="h-48">
-				{#each images as image}
+				{#each coverImages as image}
 					<CarouselItem class="h-full">
-						<img src={image} alt={title} loading="lazy" class="object-cover size-full" />
+						<img src={image} alt={title} class="object-cover size-full" />
 					</CarouselItem>
 				{/each}
 			</CarouselContent>
@@ -55,5 +55,5 @@
 			<h2 class="font-bold">{title}</h2>
 			<p class="text-gray-500 text-sm">{content}</p>
 		</span>
-	</a>
-</div>
+	</div>
+</a>
