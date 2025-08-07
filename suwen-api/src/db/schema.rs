@@ -2,7 +2,7 @@ use chrono::{DateTime, Local};
 use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 
-use suwen_entity::{VecRelatedLink, VecString, VecTab};
+use suwen_entity::{RelatedLinks, Tabs, Toc, VecString};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 #[serde(rename_all = "camelCase")]
@@ -12,8 +12,8 @@ pub struct Site {
     pub display_name: String,
     pub avatar_url: String,
     pub keywords: VecString,
-    pub related_links: VecRelatedLink,
-    pub tabs: VecTab,
+    pub related_links: RelatedLinks,
+    pub tabs: Tabs,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
@@ -34,6 +34,7 @@ pub struct ArticleBySlug {
     pub title: String,
     pub rendered_html: String,
     pub tags: VecString,
+    pub toc: Toc,
     pub view_count: i32,
     pub comment_count: i32,
     pub published_at: DateTime<Local>,

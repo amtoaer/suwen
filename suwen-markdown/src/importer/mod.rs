@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use suwen_entity::Toc;
 
 pub mod xlog;
 
@@ -46,6 +47,7 @@ pub struct Article {
     pub cover_images: Vec<String>,
     pub tags: Vec<String>,
     pub content: String,
+    pub toc: Toc,
     pub rendered_html: String,
     pub created_at: DateTime<Local>,
     pub updated_at: DateTime<Local>,

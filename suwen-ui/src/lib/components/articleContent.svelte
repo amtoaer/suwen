@@ -3,48 +3,24 @@
 	import { Badge } from './ui/badge';
 	import { onMount } from 'svelte';
 	import { MessageSquareCode, ThumbsUp } from '@lucide/svelte';
+	import type { TocItem } from '@/type';
+	import { browser } from '$app/environment';
 
-	interface TocItem {
-		id: string;
-		text: string;
-		level: number;
-	}
-
-	let { title = null, content, summary = null, publishedDate, views, tags = null } = $props();
+	let { title = null, content, summary = null, publishedDate, views, tags = null, toc } = $props();
 
 	let contentElement: HTMLElement;
 
-	let toc: TocItem[] = $state([]);
 	let activeId = $state('');
 
 	let headings = $derived.by(() => {
-		if (!toc) return [];
-		return toc.map((item) => document.getElementById(item.id)).filter(Boolean);
+		if (browser && toc) {
+			return toc.map((item: TocItem) => document.getElementById(item.id)).filter(Boolean);
+		}
+		return [];
 	});
 
 	$effect(() => {
 		if (!contentElement || !content) return;
-		// 为所有的 video 添加 controls 属性
-		contentElement.querySelectorAll('video').forEach((video) => {
-			video.setAttribute('controls', 'true');
-		});
-		// 生成目录
-		const titles = contentElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
-		const res: TocItem[] = [];
-		const levelStack: number[] = [];
-		Array.from(titles).forEach((title, index) => {
-			const htmlLevel = parseInt(title.tagName.charAt(1));
-			const text = title.textContent || '';
-			const id = `heading-${text?.toLowerCase().replace(/\s+/g, '-') || index}`;
-			title.id = id;
-			while (levelStack.length > 0 && levelStack[levelStack.length - 1] >= htmlLevel) {
-				levelStack.pop();
-			}
-			levelStack.push(htmlLevel);
-			res.push({ id, text, level: levelStack.length });
-		});
-		toc = res;
-		activeId = '';
 		handleScroll();
 	});
 
@@ -127,7 +103,7 @@
 								item.id
 									? 'text-blue-600 border-blue-500 bg-blue-50'
 									: 'text-gray-600 hover:text-gray-900 border-transparent hover:border-blue-500'}"
-								style="padding-left: {(item.level - 1) * 12 + 12}px"
+								style="padding-left: {item.level * 12 + 12}px"
 							>
 								<span class="truncate block">{item.text}</span>
 							</a>

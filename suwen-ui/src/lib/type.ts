@@ -18,6 +18,12 @@ export interface Tab {
 	path: string;
 }
 
+export interface TocItem {
+	id: string;
+	text: string;
+	level: number;
+}
+
 export interface ArticleByList {
 	slug: string;
 	title: string;
@@ -31,6 +37,7 @@ export interface ArticleByList {
 export interface ArticleBySlug {
 	title: string;
 	renderedHtml: string;
+	toc: TocItem[];
 	tags: string[];
 	viewCount: number;
 	commentCount: number;

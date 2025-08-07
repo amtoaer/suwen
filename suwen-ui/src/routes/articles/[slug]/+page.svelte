@@ -14,6 +14,7 @@
 <ArticleContent
 	title={article.title}
 	content={article.renderedHtml}
+	toc={article.toc}
 	summary={null}
 	publishedDate={article.publishedAt}
 	tags={article.tags}

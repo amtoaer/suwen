@@ -79,6 +79,7 @@ impl MigrationTrait for Migration {
                     .col(text(Content::Title))
                     .col(text(Content::OriginalText))
                     .col(string_null(Content::RenderedHtml))
+                    .col(string_null(Content::Toc))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_content_metadata")
@@ -275,6 +276,7 @@ enum Content {
     Title,
     OriginalText,
     RenderedHtml,
+    Toc,
 }
 
 #[derive(DeriveIden)]

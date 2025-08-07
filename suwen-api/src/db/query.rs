@@ -102,6 +102,7 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
                 title: Set(article.title),
                 original_text: Set(article.content),
                 rendered_html: Set(Some(article.rendered_html)),
+                toc: Set(Some(article.toc)),
                 lang_code: Set(Lang::ZhCN.to_string()),
                 content_metadata_id: Set(result.last_insert_id),
                 ..Default::default()
@@ -261,6 +262,7 @@ pub async fn get_article_by_slug(
         ])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::RenderedHtml, "rendered_html")
+        .column_as(content::Column::Toc, "toc")
         .inner_join(content::Entity)
         .filter(content_metadata::Column::ContentType.eq("article"))
         .filter(content::Column::LangCode.eq(lang.to_string()))

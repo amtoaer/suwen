@@ -12,7 +12,9 @@ pub mod site;
 pub mod tag;
 pub mod user;
 
-pub use site::{RelatedLink, Tab, VecRelatedLink, VecTab};
+pub use site::{RelatedLink, RelatedLinks, Tab, Tabs};
+
+pub use content::{Toc, TocItem};
 
 // Reference: https://www.sea-ql.org/SeaORM/docs/generate-entity/column-types/#json-column
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
@@ -24,14 +26,20 @@ impl Into<VecString> for Vec<String> {
     }
 }
 
-impl Into<VecRelatedLink> for Vec<RelatedLink> {
-    fn into(self) -> VecRelatedLink {
-        VecRelatedLink(self)
+impl Into<RelatedLinks> for Vec<RelatedLink> {
+    fn into(self) -> RelatedLinks {
+        RelatedLinks(self)
     }
 }
 
-impl Into<VecTab> for Vec<Tab> {
-    fn into(self) -> VecTab {
-        VecTab(self)
+impl Into<Tabs> for Vec<Tab> {
+    fn into(self) -> Tabs {
+        Tabs(self)
+    }
+}
+
+impl Into<Toc> for Vec<TocItem> {
+    fn into(self) -> Toc {
+        Toc(self)
     }
 }

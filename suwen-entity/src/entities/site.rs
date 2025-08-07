@@ -30,10 +30,10 @@ pub struct RelatedLink {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
-pub struct VecTab(pub Vec<Tab>);
+pub struct Tabs(pub Vec<Tab>);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
-pub struct VecRelatedLink(pub Vec<RelatedLink>);
+pub struct RelatedLinks(pub Vec<RelatedLink>);
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
 pub struct Model {
@@ -41,9 +41,9 @@ pub struct Model {
     pub owner_id: i32,
     pub site_name: String,
     pub intro: String,
-    pub tabs: VecTab,
+    pub tabs: Tabs,
     pub keywords: VecString,
-    pub related_links: VecRelatedLink,
+    pub related_links: RelatedLinks,
     pub created_at: DateTimeLocal,
     pub updated_at: DateTimeLocal,
 }
