@@ -5,6 +5,8 @@ edition = { workspace = true }
 publish = { workspace = true }
 
 [dependencies]
+suwen_entity = { workspace = true }
+
 anyhow = { workspace = true }
 autocorrect = { workspace = true }
 chrono = { workspace = true }
@@ -12,5 +14,5 @@ pulldown-cmark = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-syntect = { workspace = true }
+two-face = { workspace = true }
 yaml-rust2 = { workspace = true }

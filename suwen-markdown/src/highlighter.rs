@@ -1,27 +1,30 @@
 use anyhow::{Result, anyhow};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Tag, TagEnd};
-use syntect::highlighting::{Theme, ThemeSet};
-use syntect::html::highlighted_html_for_string;
-use syntect::parsing::SyntaxSet;
+
+use two_face::{
+    re_exports::syntect::{html::highlighted_html_for_string, parsing::SyntaxSet},
+    syntax,
+    theme::{self, EmbeddedLazyThemeSet},
+};
 
 pub struct Highlighter {
     syntax_set: SyntaxSet,
-    theme: Theme,
+    theme_set: EmbeddedLazyThemeSet,
 }
 
 impl Highlighter {
-    pub fn new(theme: &str) -> Result<Highlighter> {
-        let syntax_set = SyntaxSet::load_defaults_newlines();
-        let mut theme_set = ThemeSet::load_defaults();
-        let theme = theme_set
-            .themes
-            .remove(theme)
-            .ok_or_else(|| anyhow!("Theme '{}' not found in the theme set", theme))?;
-
-        Ok(Highlighter { syntax_set, theme })
+    pub fn new() -> Highlighter {
+        Highlighter {
+            syntax_set: syntax::extra_newlines(),
+            theme_set: theme::extra(),
+        }
     }
 
-    pub fn highlight<'a, It>(&self, events: It) -> Result<Vec<Event<'a>>>
+    pub fn highlight<'a, It>(
+        &self,
+        theme_name: two_face::theme::EmbeddedThemeName,
+        events: It,
+    ) -> Result<Vec<Event<'a>>>
     where
         It: Iterator<Item = Event<'a>>,
     {
@@ -52,7 +55,7 @@ impl Highlighter {
                         &to_hightlight,
                         &self.syntax_set,
                         syntax,
-                        &self.theme,
+                        self.theme_set.get(theme_name),
                     )
                     .map(|v| Event::Html(CowStr::from(v)))
                     .map_err(|e| anyhow!("Highlighting error: {}", e));

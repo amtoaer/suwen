@@ -3,13 +3,13 @@ pub mod importer;
 
 use anyhow::Result;
 use std::{fs::create_dir_all, path::PathBuf, sync::LazyLock};
+use two_face::theme::EmbeddedThemeName;
 
 use pulldown_cmark::{Event, Options};
 
 use crate::highlighter::Highlighter;
 
-static HIGHLIGHTER: LazyLock<Highlighter> =
-    LazyLock::new(|| Highlighter::new("base16-ocean.dark").expect("Failed to create highlighter"));
+static HIGHLIGHTER: LazyLock<Highlighter> = LazyLock::new(Highlighter::new);
 
 pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let env_path = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".into());
@@ -37,7 +37,9 @@ pub fn parse_markdown(input: &str) -> Result<VecEvents<'_>> {
         &input,
         Options::ENABLE_GFM | Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS,
     );
-    HIGHLIGHTER.highlight(parser.into_iter()).map(Into::into)
+    HIGHLIGHTER
+        .highlight(EmbeddedThemeName::ColdarkDark, parser.into_iter())
+        .map(Into::into)
 }
 
 impl Into<String> for VecEvents<'_> {
