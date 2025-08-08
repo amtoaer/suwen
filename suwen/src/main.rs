@@ -10,12 +10,12 @@ use tracing_subscriber::util::SubscriberInitExt;
 async fn main() -> Result<()> {
     let connection = init().await?;
     let router = suwen_api::router().layer(Extension(connection.clone()));
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
     tokio::spawn(async move {
         let _ = tx.send(axum::serve(listener, router).await);
-        info!("服务器在 127.0.0.1:3000 上运行");
+        info!("服务器在 0.0.0.0:3000 上运行");
     });
     tokio::select! {
         res = rx => {

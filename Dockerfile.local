@@ -1,0 +1,48 @@
+FROM rust:alpine AS rust-builder
+
+WORKDIR /app
+
+COPY . .
+
+RUN apk update && apk add --no-cache musl-dev
+
+RUN cargo build --release && \
+    cp target/release/suwen suwen-backend
+
+FROM oven/bun:alpine AS bun-builder
+
+WORKDIR /app
+
+COPY suwen-ui suwen-ui
+
+RUN cd suwen-ui && \
+    bun install && \
+    bun --bun run build && \
+    mv ./build ../suwen-frontend
+
+FROM alpine:latest
+
+WORKDIR /app
+
+RUN apk update && apk add --no-cache \
+    multirun \
+    libgcc \
+    libstdc++ \
+    tzdata
+
+ENV LANG=zh_CN.UTF-8 \
+    TZ=Asia/Shanghai \
+    PORT=5173 \
+    FRONTEND_PORT=5173 \
+    RUST_LOG=NONE,suwen=INFO,suwen-api=INFO \
+    HOME=/app
+
+COPY --from=rust-builder /app/suwen-backend suwen-backend
+COPY --from=bun-builder /app/suwen-frontend  suwen-frontend
+COPY --from=bun-builder /usr/local/bin/bun bun
+
+RUN chmod -R 777 /app
+
+EXPOSE 3000
+
+CMD ["/usr/bin/multirun", "--", "/app/bun /app/suwen-frontend/index.js", "/app/suwen-backend"]
