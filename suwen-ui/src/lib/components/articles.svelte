@@ -16,7 +16,7 @@
 />
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-	{#each articles as article}
-		<ArticleItem {...article} />
+	{#each articles as article, idx}
+		<ArticleItem {...article} lazy={idx >= 6} />
 	{/each}
 </div>

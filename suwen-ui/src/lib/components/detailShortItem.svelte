@@ -8,7 +8,7 @@
 		CarouselNext
 	} from '@/components/ui/carousel';
 
-	let { slug, coverImages, title, content } = $props();
+	let { slug, coverImages, title, content, lazy } = $props();
 	let api = $state<CarouselAPI>();
 </script>
 
@@ -37,10 +37,10 @@
 					<CarouselItem class="h-full">
 						<img
 							fetchpriority="high"
-							loading="lazy"
 							src={image}
 							alt={title}
 							class="object-cover size-full"
+							{...lazy ? { loading: 'lazy' } : {}}
 						/>
 					</CarouselItem>
 				{/each}

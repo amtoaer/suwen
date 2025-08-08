@@ -4,7 +4,7 @@
 	import { Eye, MessageSquare } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { slug, coverImages, title, description, tags, viewCount, commentCount, publishedAt } =
+	let { slug, coverImages, title, description, tags, viewCount, commentCount, publishedAt, lazy } =
 		$props();
 
 	let formatDate = (date: Date) => {
@@ -28,11 +28,11 @@
 		<span class="h-48 overflow-hidden">
 			<img
 				fetchpriority="high"
-				loading="lazy"
 				src={coverImages[0]}
 				alt={title}
 				class="size-full object-cover sm:group-hover:scale-110 sm:transition-transform sm:duration-400 sm:ease-in-out"
 				draggable="false"
+				{...lazy ? { loading: 'lazy' } : {}}
 			/>
 		</span>
 		<CardContent class="px-4 pb-4">

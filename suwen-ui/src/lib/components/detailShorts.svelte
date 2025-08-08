@@ -14,9 +14,10 @@
 />
 <div>
 	<div class="grid grid-cols-1 sm:grid-cols-4 gap-8 sm:gap-5">
-		{#each shorts as short}
+		{#each shorts as short, idx}
 			<DetailShortItem
 				slug={short.slug}
+				lazy={idx >= 8}
 				coverImages={short.coverImages}
 				title={short.title}
 				content={short.content}
