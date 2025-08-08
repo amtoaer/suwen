@@ -104,7 +104,7 @@ pub fn import_file(path: &Path) -> Result<ImportResult> {
                         Event::End(TagEnd::Heading(level)) => {
                             if in_heading && start_handled && text_handled && head_level == *level {
                                 while let Some(last) = stack.last()
-                                    && *last <= head_level
+                                    && *last >= head_level
                                 {
                                     stack.pop();
                                 }
