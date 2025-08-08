@@ -9,6 +9,12 @@
 	const { siteName, intro, avatarUrl, relatedLinks, displayName, tabs } = data;
 </script>
 
+<svelte:head>
+	<link rel="icon" href={avatarUrl} />
+	<title>{siteName}</title>
+	<meta name="description" content={intro} />
+</svelte:head>
+
 <ProgressBar color="#7F57F1" displayThresholdMs={0} intervalTime={200} settleTime={200} />
 
 <div class="min-h-screen bg-white/80">

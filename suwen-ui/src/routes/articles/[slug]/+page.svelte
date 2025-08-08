@@ -3,12 +3,11 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	let { siteName, intro, article } = data;
+	let { siteName, article } = data;
 </script>
 
 <svelte:head>
 	<title>{article.title} - {siteName}</title>
-	<meta name="description" content={intro} />
 </svelte:head>
 
 <ArticleContent

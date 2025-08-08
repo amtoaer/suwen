@@ -5,4 +5,8 @@
 	let { data }: PageProps = $props();
 </script>
 
+<svelte:head>
+	<title>{data.short.title} - {data.siteName}</title>
+</svelte:head>
+
 <ShortContent {...data.short} />
