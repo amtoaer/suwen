@@ -65,6 +65,7 @@ async fn proxy_handler(
     };
     response.headers_mut().remove(header::CONTENT_DISPOSITION);
     (
+        response.status(),
         response.headers().clone(),
         Body::from_stream(response.bytes_stream()),
     )
