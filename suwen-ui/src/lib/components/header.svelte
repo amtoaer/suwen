@@ -9,7 +9,7 @@
 	<div class="flex items-start justify-between mb-6">
 		<div class="flex items-start gap-6">
 			<Avatar class="w-30 h-30 border-4 border-white shadow-lg">
-				<AvatarImage src={avatar} alt="Profile" draggable="false" />
+				<AvatarImage fetchpriority="high" src={avatar} alt="Profile" draggable="false" />
 			</Avatar>
 			<div class="flex-1">
 				<h1 class="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
@@ -23,7 +23,12 @@
 							aria-label={relatedLink.name}
 							target="_blank"
 						>
-							<img src={relatedLink.icon} alt={relatedLink.name} class="w-4 h-4" />
+							<img
+								fetchpriority="high"
+								src={relatedLink.icon}
+								alt={relatedLink.name}
+								class="w-4 h-4"
+							/>
 						</Button>
 					{/each}
 				</div>

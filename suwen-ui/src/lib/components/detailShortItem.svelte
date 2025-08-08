@@ -35,7 +35,7 @@
 			<CarouselContent class="h-48">
 				{#each coverImages as image}
 					<CarouselItem class="h-full">
-						<img src={image} alt={title} class="object-cover size-full" />
+						<img fetchpriority="high" src={image} alt={title} class="object-cover size-full" />
 					</CarouselItem>
 				{/each}
 			</CarouselContent>

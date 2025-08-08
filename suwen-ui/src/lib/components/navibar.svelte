@@ -25,7 +25,7 @@
 			<Settings class="w-5 h-5 text-gray-600" />
 			<div class="flex items-center gap-2">
 				<Avatar class="w-6 h-6">
-					<AvatarImage src={avatar} alt="User" />
+					<AvatarImage fetchpriority="high" src={avatar} alt="User" />
 				</Avatar>
 				<span class="text-sm text-gray-600">amtoaer</span>
 				<ChevronDown class="w-4 h-4 text-gray-600" />

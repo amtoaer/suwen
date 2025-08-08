@@ -22,7 +22,7 @@
 		<CarouselContent>
 			{#each coverImages as image}
 				<CarouselItem>
-					<img src={image} alt={title} class="object-cover size-full" />
+					<img fetchpriority="high" src={image} alt={title} class="object-cover size-full" />
 				</CarouselItem>
 			{/each}
 		</CarouselContent>
