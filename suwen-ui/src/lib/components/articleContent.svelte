@@ -11,6 +11,7 @@
 	let contentElement: HTMLElement;
 
 	let activeId = $state('');
+	let tocMaxWidth = $state(0);
 
 	let headings = $derived.by(() => {
 		if (browser && toc) {
@@ -35,10 +36,20 @@
 		activeId = '';
 	};
 
+	const handleResize = () => {
+		const padding = 20;
+		const availableWidth = (window.innerWidth - contentElement.clientWidth) / 2 - padding;
+		tocMaxWidth = availableWidth;
+	};
+
 	onMount(() => {
+		handleScroll();
+		handleResize();
 		window.addEventListener('scroll', handleScroll);
+		window.addEventListener('resize', handleResize);
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('resize', handleResize);
 		};
 	});
 </script>
@@ -72,7 +83,7 @@
 		</div>
 	{/if}
 	<div class="relative">
-		<aside class="absolute right-full h-full lg:block hidden pr-10">
+		<aside class="absolute right-full h-full lg:block hidden pr-14">
 			<div class="sticky top-2/3 flex flex-col gap-4">
 				<button
 					class="flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -91,19 +102,20 @@
 			</div>
 		</aside>
 		{#if toc.length > 0}
-			<aside class="absolute left-full pl-10 w-auto h-full top-0 lg:block hidden">
-				<div class="sticky top-8">
-					<h4 class="text-sm font-semibold text-gray-700 mb-4">目录</h4>
-
-					<nav class="space-y-1 max-w-64">
+			<aside
+				class="absolute left-full h-full lg:block hidden pl-14"
+				style="max-width: {tocMaxWidth}px;"
+			>
+				<div class="sticky top-8 truncate">
+					<nav class="space-y-1">
 						{#each toc as item}
 							<a
 								href="#{item.id}"
-								class="block text-left text-sm py-1 border-l-2 transition-colors w-full no-underline {activeId ===
+								class="block text-left text-sm py-1 border-l-2 transition-colors no-underline {activeId ===
 								item.id
 									? 'text-blue-600 border-blue-500 bg-blue-50'
 									: 'text-gray-600 hover:text-gray-900 border-transparent hover:border-blue-500'}"
-								style="padding-left: {item.level * 12 + 12}px"
+								style="padding-left: {item.level * 12 + 12}px;"
 							>
 								<span class="truncate block">{item.text}</span>
 							</a>
