@@ -1,10 +1,20 @@
-FROM rust:alpine AS rust-builder
+FROM lukemathwalker/cargo-chef:latest-rust-1-alpine AS chef
 
 WORKDIR /app
 
+FROM chef AS rust-planner
+
 COPY . .
 
-RUN apk update && apk add --no-cache musl-dev
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS rust-builder
+
+COPY --from=rust-planner /app/recipe.json recipe.json
+
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY . .
 
 RUN cargo build --release && \
     cp target/release/suwen suwen-backend
@@ -13,10 +23,14 @@ FROM oven/bun:alpine AS bun-builder
 
 WORKDIR /app
 
-COPY suwen-ui suwen-ui
+COPY suwen-ui/package.json suwen-ui/bun.lock suwen-ui/
 
 RUN cd suwen-ui && \
-    bun install && \
+    bun install
+
+COPY suwen-ui ./suwen-ui
+
+RUN cd suwen-ui && \
     bun --bun run build && \
     mv ./build ../suwen-frontend
 
