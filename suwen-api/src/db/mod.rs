@@ -2,24 +2,64 @@ mod query;
 mod schema;
 mod utils;
 
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    time::Duration,
+};
 
 pub use query::*;
 pub use schema::*;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use dirs::config_dir;
 pub use sea_orm::DatabaseConnection;
-use sea_orm::{ConnectOptions, Database};
+use sea_orm::{
+    ConnectOptions, Database, SqlxSqliteConnector,
+    sqlx::{
+        ConnectOptions as SqlxConnectOptions, Sqlite,
+        sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous},
+    },
+};
 use suwen_migration::{Migrator, MigratorTrait};
+use tokio::fs::create_dir_all;
+
+async fn migrate(url: &str) -> Result<()> {
+    let db = Database::connect(ConnectOptions::new(url)).await?;
+    Migrator::up(&db, None).await?;
+    db.close().await?;
+    Ok(())
+}
 
 pub async fn database_connection() -> Result<DatabaseConnection> {
-    let mut option = ConnectOptions::new("sqlite://suwen.db?mode=rwc");
+    let db_path = config_dir()
+        .map(|path| path.join("suwen").join("suwen.db"))
+        .unwrap_or_else(|| "suwen.db".into());
+    info!("数据库存储于： {}", db_path.display());
+    if let Some(parent) = db_path.parent() {
+        create_dir_all(parent).await.context("创建数据库目录失败")?;
+    }
+    let url = format!("sqlite://{}?mode=rwc", db_path.display());
+    migrate(&url).await?;
+    let mut option = ConnectOptions::new(&url);
     option
-        .max_connections(30)
-        .acquire_timeout(std::time::Duration::from_secs(30));
-    let conn = Database::connect(option).await?;
-    Migrator::up(&conn, None).await?;
-    Ok(conn)
+        .max_connections(50)
+        .min_connections(5)
+        .acquire_timeout(Duration::from_secs(90));
+    let connect_option = option
+        .get_url()
+        .parse::<SqliteConnectOptions>()
+        .context("Failed to parse database URL")?
+        .disable_statement_logging()
+        .busy_timeout(Duration::from_secs(90))
+        .journal_mode(SqliteJournalMode::Wal)
+        .synchronous(SqliteSynchronous::Normal)
+        .optimize_on_close(true, None);
+    Ok(SqlxSqliteConnector::from_sqlx_sqlite_pool(
+        option
+            .sqlx_pool_options::<Sqlite>()
+            .connect_with(connect_option)
+            .await?,
+    ))
 }
 
 pub enum Lang {

@@ -26,6 +26,7 @@ axum = { version = "0.8.4", features = ["macros"] }
 anyhow = "1.0.98"
 autocorrect = "2.14.2"
 chrono = { version = "0.4.41", features = ["serde"] }
+dirs = "6.0.0"
 mime_guess = "2.0.5"
 pulldown-cmark = "0.13.0"
 regex = "1.11.1"
@@ -57,5 +58,7 @@ tower-http = { version = "0.6.6", features = [
     "compression-br",
     "fs",
 ] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["chrono", "json"] }
 two-face = { version = "0.4.3", features = ["syntect-default-onig"] }
 yaml-rust2 = "0.10.3"

@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate tracing;
+
 use std::sync::LazyLock;
 
 use axum::body::Body;
