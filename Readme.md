@@ -16,16 +16,19 @@ Suwen（素文）是一个类 Xlog 风格的个人博客系统，旨在提供一
 # 技术栈
 
 + 前端：Svelte/SvelteKit、Tailwind CSS、Shadcn UI
-+ 后端：Rust、Axum
++ 后端：Rust、Axum、Sea-ORM
 
 # 截图
 
 ![Suwen 1](./images/1.webp)
 ![Suwen 2](./images/2.webp)
 
-# 目标
+# 当前进度
 
-+ [ ] 采用 Svelte/SvelteKit 构建前端，仅做页面渲染（不在 Node 侧实现后端逻辑），开启 SSR 方便 SEO
-+ [ ] 采用 Rust 构建后端，提供 API、Markdown 渲染、Response 压缩、缓存等功能
-+ [ ] 采用 Sqlite 数据库，提供数据持久化存储（待定）
-+ [ ] 构建 Docker 镜像，Rust 部分作为入口，反向代理至 SvelteKit 前端
++ [x] 前端采用 SSR 实现渲染，方便 SEO
++ [x] 后端建表并实现基础信息、文章、图文的读取，和前端联调通过
++ [x] 一键导入 xlog 的文章和图文
++ [x] Rust 侧驱动的目录生成与语法高亮，最小化前端渲染工作
++ [x] Rust Axum 作为统一入口，反向代理至 SvelteKit 前端并自动处理 zstd、br、gzip 压缩，节省流量传输
++ [ ] 构建 Docker 镜像
++ [ ] 支持在线发布文章
