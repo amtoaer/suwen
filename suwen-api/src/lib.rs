@@ -4,7 +4,8 @@ extern crate tracing;
 use std::sync::LazyLock;
 
 use axum::body::Body;
-use reqwest::header;
+use axum::http::HeaderMap;
+use reqwest::{Method, header};
 use suwen_markdown::UPLOAD_DIR;
 use tower::ServiceExt;
 
@@ -45,20 +46,27 @@ async fn uploads_handler(AxumPath(path): AxumPath<String>, request: Request) -> 
     ServeFile::new(UPLOAD_DIR.join(path)).oneshot(request).await
 }
 
-async fn proxy_handler(Query(query): Query<serde_json::Value>) -> impl IntoResponse {
+async fn proxy_handler(
+    Query(query): Query<serde_json::Value>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
     let url = match query.get("url").and_then(|v| v.as_str()) {
         Some(url) => url,
         None => return axum::http::StatusCode::BAD_REQUEST.into_response(),
     };
-    let response = match CLIENT.get(url).send().await {
+    let request = CLIENT
+        .request(Method::GET, url)
+        .headers(headers)
+        .build()
+        .unwrap();
+    let mut response = match CLIENT.execute(request).await {
         Ok(resp) => resp,
         Err(_) => return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    let mut headers = header::HeaderMap::new();
-    for (key, value) in response.headers() {
-        if key != header::CONTENT_DISPOSITION {
-            headers.insert(key, value.clone());
-        }
-    }
-    (headers, Body::from_stream(response.bytes_stream())).into_response()
+    response.headers_mut().remove(header::CONTENT_DISPOSITION);
+    (
+        response.headers().clone(),
+        Body::from_stream(response.bytes_stream()),
+    )
+        .into_response()
 }
