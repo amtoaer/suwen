@@ -28,6 +28,7 @@
 		<span class="h-48 overflow-hidden">
 			<img
 				fetchpriority="high"
+				loading="lazy"
 				src={coverImages[0]}
 				alt={title}
 				class="size-full object-cover sm:group-hover:scale-110 sm:transition-transform sm:duration-400 sm:ease-in-out"
