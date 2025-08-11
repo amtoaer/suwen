@@ -11,7 +11,6 @@ pub struct Site {
     pub intro: String,
     pub display_name: String,
     pub avatar_url: String,
-    pub keywords: VecString,
     pub related_links: RelatedLinks,
     pub tabs: Tabs,
 }

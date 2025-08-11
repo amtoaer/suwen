@@ -1,0 +1,200 @@
+use anyhow::{Context, Result, bail};
+use chrono::{DateTime, Local};
+use futures::{TryStreamExt, stream::FuturesUnordered};
+use pulldown_cmark::{Event, Tag};
+use pulldown_cmark_to_cmark::cmark_resume;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, path::PathBuf};
+use tokio::{
+    fs::{self, create_dir_all},
+    task::JoinSet,
+};
+
+mod xlog;
+
+pub use xlog::import_file as XlogImporter;
+
+use crate::parse_markdown;
+
+pub async fn import_path<T, F>(
+    source: PathBuf,
+    output: PathBuf,
+    image_output: Option<PathBuf>,
+    importer: T,
+) -> Result<()>
+where
+    T: Fn(PathBuf, PathBuf, PathBuf) -> F,
+    F: Future<Output = Result<Markdown>> + Send + 'static,
+{
+    create_dir_all(&output).await?;
+    let image_output = image_output.unwrap_or_else(|| output.join("images"));
+    create_dir_all(&image_output).await?;
+    let mut join_set = JoinSet::new();
+    for file in collect_files(source).await? {
+        join_set.spawn(importer(file, output.clone(), image_output.clone()));
+    }
+    let write_task = join_set
+        .join_all()
+        .await
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter_map(|result| {
+            let target = output.join(format!("{}.md", result.slug()));
+            if let Ok(str) = result.to_string() {
+                Some(async move { fs::write(&target, str).await })
+            } else {
+                None
+            }
+        })
+        .collect::<FuturesUnordered<_>>();
+    Ok(write_task.try_collect().await?)
+}
+
+async fn collect_files(source: PathBuf) -> Result<Vec<PathBuf>> {
+    let (mut dirs, mut files) = (vec![source], Vec::new());
+    while let Some(dir) = dirs.pop() {
+        let mut entries = fs::read_dir(&dir).await?;
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.is_dir() {
+                dirs.push(path);
+            } else if path.is_file() {
+                files.push(path);
+            }
+        }
+    }
+    Ok(files)
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum Markdown {
+    Article {
+        slug: String,
+        title: String,
+        cover_images: Vec<String>,
+        tags: Vec<String>,
+        #[serde(skip)]
+        content: String,
+        created_at: DateTime<Local>,
+        updated_at: DateTime<Local>,
+        published_at: DateTime<Local>,
+    },
+    Short {
+        slug: String,
+        title: String,
+        cover_images: Vec<String>,
+        #[serde(skip)]
+        content: String,
+        created_at: DateTime<Local>,
+        updated_at: DateTime<Local>,
+        published_at: DateTime<Local>,
+    },
+}
+
+impl Markdown {
+    pub(super) fn slug(&self) -> &str {
+        match self {
+            Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => slug,
+        }
+    }
+
+    pub(super) fn to_string(&self) -> Result<String> {
+        let metadata = serde_json::to_string_pretty(self)?;
+        match self {
+            Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
+                Ok(format!("---\n{}\n---\n{}", metadata, content))
+            }
+        }
+    }
+
+    pub(super) fn from_string(input: &str) -> Result<Self> {
+        let parts = input.splitn(3, "---\n").collect::<Vec<_>>();
+        if parts.len() != 3 {
+            bail!("Invalid markdown format: missing metadata or content");
+        }
+        let mut metadata: Markdown = serde_json::from_str(parts[1])?;
+        let article = parts[2].to_string();
+        match &mut metadata {
+            Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
+                *content = article;
+            }
+        }
+        Ok(metadata)
+    }
+
+    /// 替换 slug，包括修改 metadata 中的 slug，更新 metadata、正文中的图片引用地址
+    pub(super) fn rename_slug(&mut self, new_slug: &str) -> Result<()> {
+        let old_slug = self.slug().to_string();
+        match self {
+            Markdown::Article {
+                slug, cover_images, ..
+            }
+            | Markdown::Short {
+                slug, cover_images, ..
+            } => {
+                *slug = new_slug.to_string();
+                cover_images.iter_mut().for_each(|image| {
+                    *image = image.replacen(&old_slug, new_slug, 1);
+                });
+            }
+        }
+        if let Markdown::Article { content, .. } = self {
+            let mut events = parse_markdown(content)?;
+            events.iter_mut().for_each(|event| {
+                if let Event::Start(Tag::Image { dest_url, .. }) = event {
+                    *dest_url = dest_url.replacen(&old_slug, new_slug, 1).into();
+                }
+            });
+            let mut buf = String::new();
+            cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
+            *content = buf;
+        }
+        Ok(())
+    }
+
+    pub(super) fn replace_images(&mut self, replace_pair: &HashMap<String, String>) -> Result<()> {
+        match self {
+            Markdown::Article { cover_images, .. } | Markdown::Short { cover_images, .. } => {
+                cover_images.iter_mut().for_each(|image| {
+                    if let Some(new_image) = replace_pair.get(image) {
+                        *image = new_image.clone();
+                    }
+                });
+            }
+        }
+        if let Markdown::Article { content, .. } = self {
+            let mut events = parse_markdown(content)?;
+            events.iter_mut().for_each(|event| {
+                if let Event::Start(Tag::Image { dest_url, .. }) = event {
+                    if let Some(new_url) = replace_pair.get(dest_url.as_ref()) {
+                        *dest_url = new_url.clone().into();
+                    }
+                }
+            });
+            let mut buf = String::new();
+            cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
+            *content = buf;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::manager::importer::{XlogImporter, import_path};
+
+    #[ignore = "only for manual test"]
+    #[tokio::test]
+    async fn test_format_path() {
+        let _ = import_path(
+            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes"),
+            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
+            None,
+            XlogImporter,
+        )
+        .await;
+    }
+}

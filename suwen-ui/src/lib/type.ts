@@ -3,7 +3,6 @@ export interface Site {
 	intro: string;
 	displayName: string;
 	avatarUrl: string;
-	keywords: string[];
 	relatedLinks: RelatedLink[];
 	tabs: Tab[];
 }

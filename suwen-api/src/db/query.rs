@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 
 use crate::db::Lang;
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagWithCount};
@@ -30,7 +29,6 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         site::Entity::insert(site::ActiveModel {
             site_name: Set("晓风残月".into()),
             intro: Set("叹息似的渺茫，你仍要保存着那真！".into()),
-            keywords: Set(vec!["技术".to_owned(), "编程".to_owned()].into()),
             related_links: Set(vec![
                 RelatedLink {
                     name: "GitHub".into(),
@@ -80,59 +78,6 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         })
         .exec(&transaction)
         .await?;
-        let (articles, shorts) = suwen_markdown::importer::import_path(
-            &Path::new("/Users/amtoaer/Downloads/Zen/amtoaer/notes"),
-            &suwen_markdown::importer::xlog::import_file,
-        )?;
-        let (len_articles, len_shorts) = (articles.len(), shorts.len());
-        for (idx, article) in articles.into_iter().enumerate() {
-            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
-                slug: Set(article.slug),
-                content_type: Set("article".into()),
-                cover_images: Set(article.cover_images.into()),
-                tags: Set(article.tags.into()),
-                view_count: Set(idx as i32),
-                comment_count: Set(len_articles as i32 - idx as i32),
-                published_at: Set(Some(article.published_at)),
-                ..Default::default()
-            })
-            .exec(&transaction)
-            .await?;
-            content::Entity::insert(content::ActiveModel {
-                title: Set(article.title),
-                original_text: Set(article.content),
-                rendered_html: Set(Some(article.rendered_html)),
-                toc: Set(Some(article.toc)),
-                lang_code: Set(Lang::ZhCN.to_string()),
-                content_metadata_id: Set(result.last_insert_id),
-                ..Default::default()
-            })
-            .exec(&transaction)
-            .await?;
-        }
-        for (idx, short) in shorts.into_iter().enumerate() {
-            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
-                slug: Set(short.slug),
-                content_type: Set("gallery".into()),
-                cover_images: Set(short.cover_images.into()),
-                tags: Set(vec![].into()),
-                view_count: Set(idx as i32),
-                comment_count: Set(len_shorts as i32 - idx as i32),
-                published_at: Set(Some(short.published_at)),
-                ..Default::default()
-            })
-            .exec(&transaction)
-            .await?;
-            content::Entity::insert(content::ActiveModel {
-                title: Set(short.title),
-                original_text: Set(short.content),
-                lang_code: Set(Lang::ZhCN.to_string()),
-                content_metadata_id: Set(result.last_insert_id),
-                ..Default::default()
-            })
-            .exec(&transaction)
-            .await?;
-        }
     }
     transaction.commit().await?;
     Ok(())
@@ -144,7 +89,6 @@ pub async fn get_site(conn: &impl ConnectionTrait) -> Result<Option<Site>> {
         .columns([
             site::Column::SiteName,
             site::Column::Intro,
-            site::Column::Keywords,
             site::Column::RelatedLinks,
             site::Column::Tabs,
         ])

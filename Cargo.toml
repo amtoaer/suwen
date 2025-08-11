@@ -26,9 +26,15 @@ axum = { version = "0.8.4", features = ["macros"] }
 anyhow = "1.0.98"
 autocorrect = "2.14.2"
 chrono = { version = "0.4.41", features = ["serde"] }
+clap = { version = "4.5.43", features = ["derive"] }
 dirs = "6.0.0"
-mime_guess = "2.0.5"
+futures = "0.3.31"
+image = { version = "0.25", features = ["webp"] }
+mime2ext = "0.1.54"
+pathdiff = "0.2.3"
 pulldown-cmark = "0.13.0"
+pulldown-cmark-to-cmark = "21.0.0"
+rayon = "1.10.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.22", features = [
     "charset",
@@ -50,7 +56,9 @@ sea-orm-migration = "1.1.0"
 serde = "1.0.219"
 serde_json = "1.0.142"
 sha2 = "0.10.9"
-tokio = "1.47.1"
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-stream = "0.1.17"
+tokio-util = { version = "0.7.16", features = ["io", "rt"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = [
     "compression-zstd",
@@ -61,4 +69,5 @@ tower-http = { version = "0.6.6", features = [
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["chrono", "json"] }
 two-face = { version = "0.4.3", features = ["syntect-default-onig"] }
+webp = "0.3.0"
 yaml-rust2 = "0.10.3"

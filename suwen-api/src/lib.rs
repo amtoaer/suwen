@@ -3,13 +3,10 @@ extern crate tracing;
 
 use std::sync::LazyLock;
 
-use axum::body::Body;
-use axum::http::HeaderMap;
-use reqwest::{Method, header};
 use suwen_markdown::UPLOAD_DIR;
 use tower::ServiceExt;
 
-use axum::extract::{Path as AxumPath, Query};
+use axum::extract::Path as AxumPath;
 use axum::{Router, extract::Request, response::IntoResponse, routing::get};
 use axum_reverse_proxy::ReverseProxy;
 use tower_http::{compression::CompressionLayer, services::ServeFile};
@@ -18,22 +15,12 @@ pub mod db;
 mod routes;
 mod wrapper;
 
-static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
-        .user_agent(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
-        )
-        .build()
-        .unwrap()
-});
-
 static FRONTEND_PORT: LazyLock<String> =
     LazyLock::new(|| std::env::var("FRONTEND_PORT").unwrap_or_else(|_| "4173".to_string()));
 
 pub fn router() -> Router {
     Router::new()
         .nest("/api", routes::router())
-        .route("/proxy", get(proxy_handler))
         .route("/uploads/{file}", get(uploads_handler))
         .merge(ReverseProxy::new(
             "/",
@@ -44,30 +31,4 @@ pub fn router() -> Router {
 
 async fn uploads_handler(AxumPath(path): AxumPath<String>, request: Request) -> impl IntoResponse {
     ServeFile::new(UPLOAD_DIR.join(path)).oneshot(request).await
-}
-
-async fn proxy_handler(
-    Query(query): Query<serde_json::Value>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
-    let url = match query.get("url").and_then(|v| v.as_str()) {
-        Some(url) => url,
-        None => return axum::http::StatusCode::BAD_REQUEST.into_response(),
-    };
-    let request = CLIENT
-        .request(Method::GET, url)
-        .headers(headers)
-        .build()
-        .unwrap();
-    let mut response = match CLIENT.execute(request).await {
-        Ok(resp) => resp,
-        Err(_) => return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
-    response.headers_mut().remove(header::CONTENT_DISPOSITION);
-    (
-        response.status(),
-        response.headers().clone(),
-        Body::from_stream(response.bytes_stream()),
-    )
-        .into_response()
 }

@@ -15,7 +15,6 @@ axum = { workspace = true }
 axum-reverse-proxy = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
-mime_guess = { workspace = true }
 reqwest = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }

@@ -1,5 +1,8 @@
+#[macro_use]
+extern crate tracing;
+
 mod highlighter;
-pub mod importer;
+pub mod manager;
 
 use anyhow::Result;
 use std::{fs::create_dir_all, path::PathBuf, sync::LazyLock};
@@ -20,32 +23,14 @@ pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     path
 });
 
-pub struct VecEvents<'a>(Vec<Event<'a>>);
-
-impl<'a> Into<VecEvents<'a>> for Vec<Event<'a>> {
-    fn into(self) -> VecEvents<'a> {
-        VecEvents(self)
-    }
-}
-
 pub fn format_markdown(input: &str) -> String {
     autocorrect::format_for(input, "markdown").out
 }
 
-pub fn parse_markdown(input: &str) -> Result<VecEvents<'_>> {
+pub fn parse_markdown(input: &str) -> Result<Vec<Event<'_>>> {
     let parser = pulldown_cmark::Parser::new_ext(
         &input,
         Options::ENABLE_GFM | Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS,
     );
-    HIGHLIGHTER
-        .highlight(EmbeddedThemeName::ColdarkDark, parser.into_iter())
-        .map(Into::into)
-}
-
-impl Into<String> for VecEvents<'_> {
-    fn into(self) -> String {
-        let mut output = String::new();
-        pulldown_cmark::html::push_html(&mut output, self.0.into_iter());
-        output
-    }
+    Ok(parser.into_iter().collect::<Vec<_>>())
 }

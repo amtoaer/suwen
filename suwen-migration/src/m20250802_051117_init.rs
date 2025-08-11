@@ -32,7 +32,6 @@ impl MigrationTrait for Migration {
                     .col(text(Site::SiteName))
                     .col(text(Site::Intro))
                     .col(text(Site::Tabs))
-                    .col(text(Site::Keywords))
                     .col(text(Site::RelatedLinks))
                     .col(date_time(Site::CreatedAt).default(Expr::current_timestamp()))
                     .col(date_time(Site::UpdatedAt).default(Expr::current_timestamp()))
@@ -243,7 +242,6 @@ enum Site {
     SiteName,
     Intro,
     Tabs,
-    Keywords,
     RelatedLinks,
     CreatedAt,
     UpdatedAt,

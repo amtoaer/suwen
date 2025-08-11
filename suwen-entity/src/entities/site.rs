@@ -3,8 +3,6 @@
 use sea_orm::{FromJsonQueryResult, entity::prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::VecString;
-
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
 
@@ -42,7 +40,6 @@ pub struct Model {
     pub site_name: String,
     pub intro: String,
     pub tabs: Tabs,
-    pub keywords: VecString,
     pub related_links: RelatedLinks,
     pub created_at: DateTimeLocal,
     pub updated_at: DateTimeLocal,
@@ -55,7 +52,6 @@ pub enum Column {
     SiteName,
     Intro,
     Tabs,
-    Keywords,
     RelatedLinks,
     CreatedAt,
     UpdatedAt,
@@ -87,7 +83,6 @@ impl ColumnTrait for Column {
             Self::SiteName => ColumnType::Text.def(),
             Self::Intro => ColumnType::Text.def(),
             Self::Tabs => ColumnType::Text.def(),
-            Self::Keywords => ColumnType::Text.def(),
             Self::RelatedLinks => ColumnType::Text.def(),
             Self::CreatedAt => ColumnType::DateTime.def(),
             Self::UpdatedAt => ColumnType::DateTime.def(),
