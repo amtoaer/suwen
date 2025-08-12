@@ -37,7 +37,7 @@
 					<CarouselItem class="h-full">
 						<img
 							fetchpriority="high"
-							src={image}
+							src={`https://amto.cc/cdn-cgi/image/width=500,height=300,fit=cover/${image}`}
 							alt={title}
 							class="object-cover size-full"
 							{...lazy ? { loading: 'lazy' } : {}}

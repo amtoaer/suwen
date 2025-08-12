@@ -5,7 +5,7 @@
 <a class="w-24 h-24 rounded-lg overflow-hidden bg-gray-100" href={`/shorts/${slug}`}>
 	<img
 		fetchpriority="high"
-		src={image}
+		src={`https://amto.cc/cdn-cgi/image/width=100,height=100,fit=cover/${image}`}
 		alt={title}
 		{width}
 		{height}

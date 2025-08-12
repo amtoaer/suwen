@@ -38,7 +38,7 @@
 		<div class="aspect-video overflow-hidden">
 			<img
 				fetchpriority="high"
-				src={coverImages[0]}
+				src={`https://amto.cc/cdn-cgi/image/width=500,height=300,fit=cover/${coverImages[0]}`}
 				alt={title}
 				class="size-full object-cover sm:group-hover:scale-105 sm:transition-transform sm:duration-400 sm:ease-in-out"
 				draggable="false"
