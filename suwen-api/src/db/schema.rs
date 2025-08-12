@@ -51,7 +51,7 @@ pub struct Short {
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 #[serde(rename_all = "camelCase")]
 pub struct TagWithCount {
-    pub name: String,
+    pub tag_name: String,
     pub count: i32,
 }
 

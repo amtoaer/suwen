@@ -4,7 +4,7 @@
 	import { Archive } from '@lucide/svelte';
 	let { data }: PageProps = $props();
 
-	let { tags, groupedArchives } = data;
+	let { tags, archives } = data;
 </script>
 
 <div class="flex items-center mb-6">
@@ -16,23 +16,24 @@
 <div class="flex flex-wrap gap-2 mb-6">
 	{#each tags as tag}
 		<a
-			href={`/tags/${tag.name}`}
+			href={`/tags/${tag.tagName}`}
 			class="px-3 py-1 bg-gray-200 rounded-full text-sm text-gray-800 hover:bg-gray-300"
 		>
-			{tag.name} ({tag.count})
+			{tag.tagName} ({tag.count})
 		</a>
 	{/each}
 </div>
 
-{#each Object.entries(groupedArchives) as [year, articles]}
-	<h2 class="text-lg mb-4">{year} 年</h2>
+{#each archives as [year, articles]}
+	<h2 class="text-lg mt-5 mb-4">{year} 年</h2>
 	{#each articles as article}
 		<a
-			href={`/articles/${article.key}`}
+			href={`/articles/${article.slug}`}
 			class="flex justify-between items-center py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors"
 		>
 			<span>{article.title}</span>
-			<span class="text-gray-500 text-sm">{article.publishedDate.toLocaleDateString()}</span>
+			<span class="text-gray-500 text-sm">{new Date(article.publishedAt).toLocaleDateString()}</span
+			>
 		</a>
 	{/each}
 {/each}

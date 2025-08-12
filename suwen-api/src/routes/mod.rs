@@ -10,7 +10,7 @@ use sea_orm::DatabaseConnection;
 use suwen_entity::content_metadata;
 
 use crate::{
-    db,
+    db::{self, Archive},
     wrapper::{ApiError, ApiResponse},
 };
 
@@ -93,7 +93,7 @@ async fn get_shorts(
             query.lang.unwrap_or(db::Lang::ZhCN),
             query.sort.unwrap_or(content_metadata::Column::PublishedAt),
             query.published,
-            query.limit.unwrap_or(20) as u32,
+            query.limit.unwrap_or(100) as u32,
         )
         .await?,
     ))
@@ -132,7 +132,7 @@ async fn get_tags_with_count(
 async fn get_archives_group_by_year(
     Extension(conn): Extension<DatabaseConnection>,
     Query(query): Query<UrlQuery>,
-) -> Result<ApiResponse<HashMap<i32, Vec<db::Archive>>>, ApiError> {
+) -> Result<ApiResponse<Vec<(i32, Vec<Archive>)>>, ApiError> {
     Ok(ApiResponse::ok(
         db::get_archives_grouped_by_year(&conn, query.lang.unwrap_or(db::Lang::ZhCN)).await?,
     ))
@@ -149,7 +149,7 @@ async fn get_articles_by_tag(
             &tag_name,
             query.lang.unwrap_or(db::Lang::ZhCN),
             query.sort.unwrap_or(content_metadata::Column::PublishedAt),
-            query.limit.unwrap_or(20),
+            query.limit.unwrap_or(100),
         )
         .await?,
     ))

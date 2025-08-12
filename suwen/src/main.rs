@@ -113,7 +113,7 @@ async fn init() -> Result<db::DatabaseConnection> {
     tracing_subscriber::fmt::Subscriber::builder()
         .compact()
         .with_target(false)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_env_filter("None,suwen=INFO,suwen-api=INFO,suwen-markdown=INFO")
         .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
             "%b %d %H:%M:%S".to_owned(),
         ))

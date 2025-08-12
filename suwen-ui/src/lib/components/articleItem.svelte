@@ -52,14 +52,16 @@
 			</p>
 			<div class="flex items-center justify-between text-xs text-gray-500 mt-auto">
 				<div class="flex items-center gap-4">
-					<Badge
-						class="text-xs bg-secondary/50 hover:bg-secondary text-secondary-foreground"
-						onclick={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							goto(`/tags/${tags[0]}`);
-						}}>{tags[0]}</Badge
-					>
+					{#if tags.length > 0}
+						<Badge
+							class="text-xs bg-secondary/50 hover:bg-secondary text-secondary-foreground"
+							onclick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								goto(`/tags/${tags[0]}`);
+							}}>{tags[0]}</Badge
+						>
+					{/if}
 					<div class="flex items-center gap-1">
 						<Eye class="w-3 h-3" />
 						<span>{viewCount}</span>

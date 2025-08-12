@@ -1,30 +1,10 @@
+import { request } from '@/api.js';
+
 export const load = async ({ params }) => {
 	const tag = params.tag;
+	const articles = await request(`/api/tags/${tag}/articles`);
 	return {
 		tag,
-		articles: [
-			{
-				key: 'how-to-use-async-await-in-rust',
-				title: '如何在 Rust 中使用 async/await',
-				description: 'Rust 的 async/await 语法使得编写异步代码变得更加简单和直观。',
-				tags: ['Rust', 'Async'],
-				views: 120,
-				comments: 5,
-				publishedDate: new Date('2023-10-01'),
-				image:
-					'https://ipfs.crossbell.io/ipfs/QmP8gfk1d6uHcGHqsRdcJheYJcpEy8NcnmBt7CwBhFVo35?img-quality=75&img-format=auto&img-onerror=redirect&img-width=1920'
-			},
-			{
-				key: 'understanding-svelte-reactiveness',
-				title: '深入理解 Svelte 的反应性',
-				description: 'Svelte 的反应性系统是其核心特性之一，本文将深入探讨其工作原理。',
-				tags: ['Svelte', 'Reactiveness'],
-				views: 200,
-				comments: 10,
-				publishedDate: new Date('2023-09-15'),
-				image:
-					'https://ipfs.crossbell.io/ipfs/Qma9efPHLAo9NT4ywTSm3s9bNpnfziyLkyBp3mab6gYopF?img-quality=75&img-format=auto&img-onerror=redirect&img-width=1920'
-			}
-		]
+		articles
 	};
 };

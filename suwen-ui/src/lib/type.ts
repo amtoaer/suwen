@@ -51,7 +51,7 @@ export interface Short {
 }
 
 export interface TagWithCount {
-	name: string;
+	tagName: string;
 	count: number;
 }
 

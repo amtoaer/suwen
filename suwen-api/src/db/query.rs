@@ -238,8 +238,13 @@ pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWit
     Ok(tag::Entity::find()
         .select_only()
         .column(tag::Column::TagName)
+        .join(JoinType::LeftJoin, tag::Relation::ContentMetadataTag.def())
+        .join(
+            JoinType::LeftJoin,
+            content_metadata_tag::Relation::ContentMetadata.def(),
+        )
         .column_as(content_metadata::Column::Id.count(), "count")
-        .left_join(content_metadata::Entity)
+        .group_by(tag::Column::TagName)
         .into_model::<TagWithCount>()
         .all(conn)
         .await?)
@@ -248,7 +253,7 @@ pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWit
 pub async fn get_archives_grouped_by_year(
     conn: &DatabaseConnection,
     lang: Lang,
-) -> Result<HashMap<i32, Vec<Archive>>> {
+) -> Result<Vec<(i32, Vec<Archive>)>> {
     let archives = content_metadata::Entity::find()
         .select_only()
         .columns([
@@ -257,7 +262,11 @@ pub async fn get_archives_grouped_by_year(
         ])
         .column_as(content::Column::Title, "title")
         .inner_join(content::Entity)
-        .filter(content::Column::LangCode.eq(lang.to_string()))
+        .filter(
+            content::Column::LangCode
+                .eq(lang.to_string())
+                .and(content_metadata::Column::ContentType.eq("article")),
+        )
         .order_by_desc(content_metadata::Column::PublishedAt)
         .into_model::<Archive>()
         .all(conn)
@@ -267,6 +276,8 @@ pub async fn get_archives_grouped_by_year(
         let year = archive.published_at.year();
         grouped.entry(year).or_default().push(archive);
     }
+    let mut grouped: Vec<(i32, Vec<Archive>)> = grouped.into_iter().collect();
+    grouped.sort_by_key(|(year, _)| -*year);
     Ok(grouped)
 }
 
@@ -288,6 +299,7 @@ pub async fn get_articles_by_tag(
             content_metadata::Column::CommentCount,
             content_metadata::Column::PublishedAt,
         ])
+        .column(content::Column::Title)
         .inner_join(content_metadata::Entity)
         .join(
             JoinType::InnerJoin,
