@@ -54,7 +54,7 @@
 	});
 </script>
 
-<article class="prose max-w-4xl mx-auto">
+<article class="prose max-w-4xl mx-auto prose-video:rounded-md prose-img:rounded-md">
 	<h1 class="text-center text-xl sm:text-3xl">
 		{title}
 	</h1>

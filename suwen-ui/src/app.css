@@ -126,3 +126,7 @@ html {
 	scroll-behavior: smooth;
 	scrollbar-gutter: stable;
 }
+
+body .medium-zoom-image--opened {
+	@apply rounded-md;
+}
