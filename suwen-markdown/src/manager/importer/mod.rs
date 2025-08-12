@@ -1,25 +1,30 @@
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Local};
 use futures::{TryStreamExt, stream::FuturesUnordered};
-use pulldown_cmark::{Event, Tag};
+use lol_html::{HtmlRewriter, Settings, element};
+use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::LazyLock};
+use suwen_entity::{Toc, TocItem};
 use tokio::{
     fs::{self, create_dir_all},
     task::JoinSet,
 };
+use two_face::theme::EmbeddedThemeName;
 
 mod xlog;
 
 pub use xlog::import_file as XlogImporter;
 
-use crate::parse_markdown;
+use crate::{highlighter::Highlighter, parse_markdown};
+
+static HIGHLIGHTER: LazyLock<Highlighter> = LazyLock::new(Highlighter::new);
 
 pub async fn import_path<T, F>(
     source: PathBuf,
     output: PathBuf,
-    image_output: Option<PathBuf>,
+    obj_output: Option<PathBuf>,
     importer: T,
 ) -> Result<()>
 where
@@ -27,11 +32,11 @@ where
     F: Future<Output = Result<Markdown>> + Send + 'static,
 {
     create_dir_all(&output).await?;
-    let image_output = image_output.unwrap_or_else(|| output.join("images"));
-    create_dir_all(&image_output).await?;
+    let obj_output = obj_output.unwrap_or_else(|| output.join("objects"));
+    create_dir_all(&obj_output).await?;
     let mut join_set = JoinSet::new();
     for file in collect_files(source).await? {
-        join_set.spawn(importer(file, output.clone(), image_output.clone()));
+        join_set.spawn(importer(file, output.clone(), obj_output.clone()));
     }
     let write_task = join_set
         .join_all()
@@ -99,6 +104,12 @@ impl Markdown {
         }
     }
 
+    fn content(&self) -> &str {
+        match self {
+            Markdown::Article { content, .. } | Markdown::Short { content, .. } => content,
+        }
+    }
+
     pub(super) fn to_string(&self) -> Result<String> {
         let metadata = serde_json::to_string_pretty(self)?;
         match self {
@@ -141,11 +152,40 @@ impl Markdown {
         }
         if let Markdown::Article { content, .. } = self {
             let mut events = parse_markdown(content)?;
-            events.iter_mut().for_each(|event| {
-                if let Event::Start(Tag::Image { dest_url, .. }) = event {
-                    *dest_url = dest_url.replacen(&old_slug, new_slug, 1).into();
+            let old_slug = old_slug.as_str();
+            for event in events.iter_mut() {
+                match event {
+                    Event::Start(Tag::Image { dest_url, .. }) => {
+                        *dest_url = dest_url.replacen(old_slug, new_slug, 1).into();
+                    }
+                    Event::Html(html_content) | Event::InlineHtml(html_content) => {
+                        let mut buf = Vec::new();
+                        let mut rewriter = HtmlRewriter::new(
+                            Settings {
+                                element_content_handlers: vec![element!(
+                                    "source[src]",
+                                    move |el| {
+                                        let video_url = el.get_attribute("src").unwrap_or_default();
+                                        el.set_attribute(
+                                            "src",
+                                            &video_url.replacen(old_slug, new_slug, 1),
+                                        )?;
+                                        Ok(())
+                                    }
+                                )],
+                                ..Settings::new()
+                            },
+                            |c: &[u8]| buf.extend_from_slice(c),
+                        );
+                        rewriter.write(html_content.as_bytes())?;
+                        rewriter.end()?;
+                        *html_content = String::from_utf8(buf)
+                            .context("Failed to convert HTML to string")?
+                            .into();
+                    }
+                    _ => {}
                 }
-            });
+            }
             let mut buf = String::new();
             cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
             *content = buf;
@@ -178,13 +218,65 @@ impl Markdown {
         }
         Ok(())
     }
+
+    pub fn render_to_html(&self) -> Result<(Option<Toc>, Option<String>)> {
+        if matches!(self, Markdown::Short { .. }) {
+            return Ok((None, None));
+        }
+        let mut events = parse_markdown(&self.content())?;
+        let mut toc_item = TocItem {
+            id: String::new(),
+            text: String::new(),
+            level: 0,
+        };
+        let (mut start_handled, mut text_handled, mut in_heading) = (false, false, false);
+        let (mut head_count, mut head_level) = (0, HeadingLevel::H1);
+        let (mut toc, mut stack) = (Vec::new(), Vec::new());
+        events.iter_mut().for_each(|mut event| match &mut event {
+            Event::Start(Tag::Heading { level, id, .. }) => {
+                head_count += 1;
+                let generated_id = format!("heading-{}", head_count);
+                (*id, toc_item.id) = (Some(generated_id.clone().into()), generated_id);
+                head_level = *level;
+                start_handled = true;
+                in_heading = true;
+            }
+            Event::Text(text) | Event::Code(text) if in_heading => {
+                toc_item.text += text;
+                text_handled = true;
+            }
+            Event::End(TagEnd::Heading(level)) => {
+                if in_heading && start_handled && text_handled && head_level == *level {
+                    while let Some(last) = stack.last()
+                        && *last <= head_level
+                    {
+                        stack.pop();
+                    }
+                    toc_item.level = stack.len();
+                    stack.push(head_level);
+                    toc.push(toc_item.clone());
+                }
+                (start_handled, text_handled, in_heading) = (false, false, false);
+                toc_item.text.clear();
+            }
+            _ => {}
+        });
+        let highlighted_events =
+            HIGHLIGHTER.highlight(EmbeddedThemeName::Leet, events.into_iter())?;
+        let mut buf = String::new();
+        html::push_html(&mut buf, highlighted_events.into_iter());
+        Ok((Some(toc.into()), Some(buf)))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{fs::read_to_string, path::PathBuf};
 
-    use crate::manager::importer::{XlogImporter, import_path};
+    use crate::{
+        manager::importer::{XlogImporter, import_path},
+        parse_markdown,
+    };
 
     #[ignore = "only for manual test"]
     #[tokio::test]
@@ -196,5 +288,13 @@ mod tests {
             XlogImporter,
         )
         .await;
+    }
+
+    #[ignore = "only for manual test"]
+    #[test]
+    fn test_parse_markdown() {
+        let content = read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported_副本/jie-ba-6-xiang-jie-di-yi-tan--quan-jiao-de-zheng-ti-jie-shao.md").unwrap();
+        let events = parse_markdown(&content);
+        dbg!(events);
     }
 }

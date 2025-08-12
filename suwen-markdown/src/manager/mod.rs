@@ -2,28 +2,41 @@ use std::{
     collections::HashMap,
     fs::{self, read_dir, read_to_string},
     path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
 };
 
 use crate::manager::importer::Markdown;
-use anyhow::{Context, Error, Result, anyhow, bail, ensure};
-use image::ImageReader;
+use anyhow::{Context, Result, anyhow, bail, ensure};
+use futures::{StreamExt, TryStreamExt, future::ready, stream::FuturesUnordered};
 use pathdiff::diff_paths;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use webp::Encoder;
+use tokio::{process::Command, sync::Semaphore};
+
 pub mod importer;
 
 pub struct MarkdownManager {
     output: PathBuf,
-    image_output: PathBuf,
+    obj_output: PathBuf,
 }
 
 impl MarkdownManager {
-    pub fn new(output: PathBuf, image_output: Option<PathBuf>) -> Self {
-        let image_output = image_output.unwrap_or_else(|| output.join("images"));
-        Self {
-            output,
-            image_output,
+    pub fn new(output: PathBuf, obj_output: Option<PathBuf>) -> Self {
+        let obj_output = obj_output.unwrap_or_else(|| output.join("objects"));
+        Self { output, obj_output }
+    }
+
+    pub async fn all_markdown_files(&self) -> Result<Vec<Markdown>> {
+        let mut files = vec![];
+        let mut entries = tokio::fs::read_dir(&self.output)
+            .await
+            .context("Failed to read markdown directory")?;
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.path().extension().is_some_and(|ext| ext == "md") {
+                let content = tokio::fs::read_to_string(entry.path()).await?;
+                files.push(Markdown::from_string(&content)?);
+            }
         }
+        Ok(files)
     }
 
     /// 重命名 slug，包含的步骤：
@@ -47,13 +60,13 @@ impl MarkdownManager {
         content.rename_slug(new_slug)?;
         fs::write(&target_path, content.to_string()?)?;
         let mut path_to_remove = vec![origin_path];
-        for image in read_dir(&self.image_output)? {
+        for image in read_dir(&self.obj_output)? {
             let image = image?.path();
             let old_file_name = image
                 .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or_default();
-            if Self::extract_image_slug_from_file_name(&old_file_name)
+            if Self::extract_object_slug_from_file_name(&old_file_name)
                 .is_some_and(|s| s == old_slug)
             {
                 fs::copy(
@@ -73,42 +86,66 @@ impl MarkdownManager {
     /// 1. 找到所有需要转换的图片并转换为 webp，并记录这些转换
     /// 2. 打开内容并根据转换将旧的图片引用替换成新的，原地写入新内容
     /// 3. 将旧的图片文件删除
-    pub fn convert_images(&self, quality: Option<f32>) -> Result<()> {
+    pub async fn convert_images(&self, quality: Option<f32>) -> Result<()> {
         let quality = quality.unwrap_or(80.0);
         ensure!(
             quality >= 0.0 && quality <= 100.0,
             "Quality must be between 0.0 and 100.0"
         );
         let mut files_to_convert = vec![];
-        for image in read_dir(&self.image_output)? {
+        for image in read_dir(&self.obj_output)? {
             let image = image?.path();
             if image.is_dir() {
                 continue;
             }
             if image
                 .extension()
-                .and_then(|ext| ext.to_str())
                 .map(|ext| ext.to_ascii_lowercase())
-                .is_some_and(|ext| {
-                    ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "gif" || ext == "webp"
-                })
+                .is_some_and(|ext| ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "webp")
             {
                 files_to_convert.push(image);
             }
         }
-        let image_rename_pairs = files_to_convert
-            .par_iter()
+        let semaphore = Arc::new(Semaphore::new(8));
+        let tasks = files_to_convert
+            .iter()
             .map(|file| {
-                let image = ImageReader::open(&file)?.with_guessed_format()?.decode()?;
-                let image = Encoder::from_image(&image)
-                    .map_err(|e| anyhow!("Failed to encode image {:?}: {}", file, e))?
-                    .encode(quality);
-                let target_path = file.with_extension("webp");
-                fs::write(&target_path, &*image)?;
-                Result::<_, Error>::Ok((file, target_path))
+                let semaphore = semaphore.clone();
+                async move {
+                    let _permit = semaphore.acquire().await;
+                    let target_path = file.with_extension("webp");
+                    let mut command = Command::new("cwebp");
+                    let command = command
+                        .args(&[
+                            "-sharp_yuv",
+                            "-mt",
+                            "-q",
+                            &quality.to_string(),
+                            "-metadata",
+                            "all",
+                            file.to_str().unwrap(),
+                            "-o",
+                            target_path.to_str().unwrap(),
+                        ])
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null());
+                    let status = command.status().await?;
+                    if !status.success() {
+                        return Err(anyhow!(
+                            "Failed to convert image {:?} to webp: {}",
+                            file,
+                            status
+                        ));
+                    }
+                    Ok((file, target_path))
+                }
             })
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
+            .collect::<FuturesUnordered<_>>();
+        let image_rename_pairs = tasks
+            .into_stream()
+            .filter_map(|res| ready(Result::ok(res)))
+            .collect::<Vec<_>>()
+            .await;
         let mut files_to_delete = Vec::new();
         let mut image_rename_map: HashMap<String, HashMap<String, String>> = HashMap::new();
         for (old, new) in image_rename_pairs {
@@ -119,7 +156,7 @@ impl MarkdownManager {
             files_to_delete.push(old);
             image_rename_map
                 .entry(
-                    Self::extract_image_slug(&old)
+                    Self::extract_object_slug(&old)
                         .map(|s| s.to_string())
                         .context(format!("Image file {:?} does not have a valid slug", old))?,
                 )
@@ -145,19 +182,19 @@ impl MarkdownManager {
             content.replace_images(&rename_map)?;
             fs::write(&article, content.to_string()?)?;
         }
-        for file in files_to_convert {
+        for file in files_to_delete {
             fs::remove_file(file)?;
         }
         Ok(())
     }
 
-    fn extract_image_slug(path: &Path) -> Option<&str> {
+    fn extract_object_slug(path: &Path) -> Option<&str> {
         path.file_name()
             .and_then(|s| s.to_str())
-            .and_then(|s| Self::extract_image_slug_from_file_name(s))
+            .and_then(|s| Self::extract_object_slug_from_file_name(s))
     }
 
-    fn extract_image_slug_from_file_name(file_name: &str) -> Option<&str> {
+    fn extract_object_slug_from_file_name(file_name: &str) -> Option<&str> {
         file_name.rsplitn(3, '-').nth(2)
     }
 }
@@ -251,12 +288,12 @@ mod tests {
     }
 
     #[ignore = "only for manual test"]
-    #[test]
-    fn test_convert_images() {
+    #[tokio::test]
+    async fn test_convert_images() {
         let markdown_manager = super::MarkdownManager::new(
             PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
             None,
         );
-        markdown_manager.convert_images(None).unwrap();
+        markdown_manager.convert_images(None).await.unwrap();
     }
 }

@@ -28,18 +28,18 @@ enum Commands {
         /// Output path
         #[arg(short, long)]
         output: PathBuf,
-        /// Image output path (optional, defaults to output/images)
+        /// Image output path (optional, defaults to output/objects)
         #[arg(short = 'i', long)]
-        image_output: Option<PathBuf>,
+        obj_output: Option<PathBuf>,
     },
     /// Rename slug
     RenameSlug {
         /// Output path
         #[arg(short, long)]
         output: PathBuf,
-        /// Image output path (optional, defaults to output/images)
+        /// Image output path (optional, defaults to output/objects)
         #[arg(short = 'i', long)]
-        image_output: Option<PathBuf>,
+        obj_output: Option<PathBuf>,
         /// Old slug
         #[arg(long)]
         old_slug: String,
@@ -52,9 +52,9 @@ enum Commands {
         /// Output path
         #[arg(short, long)]
         output: PathBuf,
-        /// Image output path (optional, defaults to output/images)
+        /// Image output path (optional, defaults to output/objects)
         #[arg(short = 'i', long)]
-        image_output: Option<PathBuf>,
+        obj_output: Option<PathBuf>,
         /// Quality (0-100) for image conversion (optional, defaults to 80)
         #[arg(short = 'q', long)]
         quality: Option<f32>,
@@ -70,19 +70,19 @@ async fn main() -> Result<()> {
         Some(Commands::ImportXlog {
             source,
             output,
-            image_output,
-        }) => import_xlog_content(source, output, image_output).await,
+            obj_output,
+        }) => import_xlog_content(source, output, obj_output).await,
         Some(Commands::RenameSlug {
             output,
-            image_output,
+            obj_output,
             old_slug,
             new_slug,
-        }) => rename_slug(output, image_output, old_slug, new_slug),
+        }) => rename_slug(output, obj_output, old_slug, new_slug),
         Some(Commands::ConvertImages {
             output,
-            image_output,
+            obj_output,
             quality,
-        }) => convert_images(output, image_output, quality),
+        }) => convert_images(output, obj_output, quality).await,
     }
 }
 
@@ -128,14 +128,14 @@ async fn init() -> Result<db::DatabaseConnection> {
 async fn import_xlog_content(
     source: PathBuf,
     output: PathBuf,
-    image_output: Option<PathBuf>,
+    obj_output: Option<PathBuf>,
 ) -> Result<()> {
     info!(
         "Starting to import xlog content from {:?} to {:?}",
         source, output
     );
 
-    suwen_markdown::manager::importer::import_path(source, output, image_output, XlogImporter)
+    suwen_markdown::manager::importer::import_path(source, output, obj_output, XlogImporter)
         .await?;
 
     info!("Content import completed");
@@ -144,29 +144,27 @@ async fn import_xlog_content(
 
 fn rename_slug(
     output: PathBuf,
-    image_output: Option<PathBuf>,
+    obj_output: Option<PathBuf>,
     old_slug: String,
     new_slug: String,
 ) -> Result<()> {
     info!("Renaming slug: {} -> {}", old_slug, new_slug);
 
-    let manager = MarkdownManager::new(output, image_output);
+    let manager = MarkdownManager::new(output, obj_output);
     manager.rename_slug(&old_slug, &new_slug)?;
 
     info!("Slug rename completed");
     Ok(())
 }
 
-fn convert_images(
+async fn convert_images(
     output: PathBuf,
-    image_output: Option<PathBuf>,
+    obj_output: Option<PathBuf>,
     quality: Option<f32>,
 ) -> Result<()> {
     info!("Starting to convert images to WebP format");
-
-    let manager = MarkdownManager::new(output, image_output);
-    manager.convert_images(quality)?;
-
+    let manager = MarkdownManager::new(output, obj_output);
+    manager.convert_images(quality).await?;
     info!("Image conversion completed");
     Ok(())
 }

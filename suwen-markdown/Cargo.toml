@@ -12,12 +12,11 @@ autocorrect = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
-image = { workspace = true }
+lol_html = { workspace = true }
 mime2ext = { workspace = true }
 pathdiff = { workspace = true }
 pulldown-cmark = { workspace = true }
 pulldown-cmark-to-cmark = { workspace = true }
-rayon = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
@@ -27,5 +26,4 @@ tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
 two-face = { workspace = true }
-webp = { workspace = true }
 yaml-rust2 = { workspace = true }

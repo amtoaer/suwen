@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use crate::db::Lang;
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagWithCount};
@@ -11,20 +12,23 @@ use sea_orm::{
     DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
 };
 use suwen_entity::*;
+use suwen_markdown::manager::MarkdownManager;
+use suwen_markdown::manager::importer::Markdown;
+use suwen_migration::OnConflict;
 
 pub async fn init(conn: &DatabaseConnection) -> Result<()> {
-    let transaction = conn.begin().await?;
-    let site = get_site(&transaction).await?;
+    let txn = conn.begin().await?;
+    let site = get_site(&txn).await?;
     if site.is_none() {
         let result = user::Entity::insert(user::ActiveModel {
             email: Set("amtoaer@gmail.com".into()),
             username: Set("amtoaer".into()),
             display_name: Set("amtoaer".into()),
-            avatar_url: Set("https://ipfs.crossbell.io/ipfs/QmWyMrr5hZTzuJ7eDmns8ZheyRf6xaQH4vh9ZpFYo2YFXL?img-quality=75&img-format=auto&img-onerror=redirect&img-width=384".into()),
+            avatar_url: Set("https://obj.amto.cc/avatar.webp".into()),
             password_hash: Set(sha256_hash("password")),
             ..Default::default()
         })
-        .exec(&transaction)
+        .exec(&txn)
         .await?;
         site::Entity::insert(site::ActiveModel {
             site_name: Set("晓风残月".into()),
@@ -71,15 +75,29 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
                     name: "图文".into(),
                     url: "/shorts".into(),
                 },
+                Tab {
+                    name: "归档".into(),
+                    url: "/archives".into(),
+                },
             ]
             .into()),
             owner_id: Set(result.last_insert_id),
             ..Default::default()
         })
-        .exec(&transaction)
+        .exec(&txn)
         .await?;
+        txn.commit().await?;
+        let all_markdown_files = MarkdownManager::new(
+            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
+            None,
+        )
+        .all_markdown_files()
+        .await?;
+        for file in all_markdown_files {
+            create_article(&conn, file, Lang::ZhCN).await?;
+        }
     }
-    transaction.commit().await?;
+
     Ok(())
 }
 
@@ -283,4 +301,124 @@ pub async fn get_articles_by_tag(
         .into_model::<ArticleByList>()
         .all(conn)
         .await?)
+}
+
+pub async fn create_article(
+    conn: &DatabaseConnection,
+    markdown: Markdown,
+    lang: Lang,
+) -> Result<()> {
+    let (toc, rendered_html) = markdown.render_to_html()?;
+    let txn = match markdown {
+        Markdown::Article {
+            slug,
+            title,
+            cover_images,
+            tags,
+            content,
+            created_at,
+            updated_at,
+            published_at,
+        } => {
+            let txn = conn.begin().await?;
+            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
+                slug: Set(slug),
+                content_type: Set("article".into()),
+                cover_images: Set(cover_images.into()),
+                tags: Set(tags.clone().into()),
+                view_count: Set(0),
+                comment_count: Set(0),
+                created_at: Set(created_at),
+                updated_at: Set(updated_at),
+                published_at: Set(Some(published_at)),
+                original_lang: Set(lang.to_string()),
+                ..Default::default()
+            })
+            .exec(&txn)
+            .await?;
+            content::Entity::insert(content::ActiveModel {
+                title: Set(title),
+                original_text: Set(content),
+                rendered_html: Set(rendered_html),
+                toc: Set(toc),
+                lang_code: Set(lang.to_string()),
+                content_metadata_id: Set(result.last_insert_id),
+                ..Default::default()
+            })
+            .exec(&txn)
+            .await?;
+            if tags.len() > 0 {
+                let tag_models = tags
+                    .iter()
+                    .map(|tag| tag::ActiveModel {
+                        tag_name: Set(tag.clone()),
+                        ..Default::default()
+                    })
+                    .collect::<Vec<_>>();
+                tag::Entity::insert_many(tag_models)
+                    .on_conflict(
+                        OnConflict::column(tag::Column::TagName)
+                            .do_nothing()
+                            .to_owned(),
+                    )
+                    .do_nothing()
+                    .exec(&txn)
+                    .await?;
+                let tag_records = tag::Entity::find()
+                    .filter(tag::Column::TagName.is_in(tags))
+                    .all(&txn)
+                    .await?;
+                let tag_associations = tag_records
+                    .into_iter()
+                    .map(|tag| content_metadata_tag::ActiveModel {
+                        content_metadata_id: Set(result.last_insert_id),
+                        tag_id: Set(tag.id),
+                        ..Default::default()
+                    })
+                    .collect::<Vec<_>>();
+                content_metadata_tag::Entity::insert_many(tag_associations)
+                    .exec(&txn)
+                    .await?;
+            }
+            txn
+        }
+        Markdown::Short {
+            slug,
+            title,
+            cover_images,
+            content,
+            created_at,
+            updated_at,
+            published_at,
+        } => {
+            let txn = conn.begin().await?;
+            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
+                slug: Set(slug),
+                content_type: Set("gallery".into()),
+                cover_images: Set(cover_images.into()),
+                tags: Set(vec![].into()),
+                view_count: Set(0),
+                comment_count: Set(0),
+                original_lang: Set(lang.to_string()),
+                created_at: Set(created_at),
+                updated_at: Set(updated_at),
+                published_at: Set(Some(published_at)),
+                ..Default::default()
+            })
+            .exec(&txn)
+            .await?;
+            content::Entity::insert(content::ActiveModel {
+                title: Set(title),
+                original_text: Set(content),
+                lang_code: Set(lang.to_string()),
+                content_metadata_id: Set(result.last_insert_id),
+                ..Default::default()
+            })
+            .exec(&txn)
+            .await?;
+            txn
+        }
+    };
+    txn.commit().await?;
+    Ok(())
 }
