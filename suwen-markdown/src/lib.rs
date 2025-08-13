@@ -28,7 +28,10 @@ pub fn format_markdown(input: &str) -> String {
 pub fn parse_markdown(input: &str) -> Result<Vec<Event<'_>>> {
     let parser = pulldown_cmark::Parser::new_ext(
         &input,
-        Options::ENABLE_GFM | Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS,
+        Options::ENABLE_GFM
+            | Options::ENABLE_TABLES
+            | Options::ENABLE_TASKLISTS
+            | Options::ENABLE_STRIKETHROUGH,
     );
     let events = parser.into_iter().collect::<Vec<_>>();
     // 将相邻的 HTML、 Inline HTML 合并
