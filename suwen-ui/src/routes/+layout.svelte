@@ -20,7 +20,7 @@
 <div class="min-h-screen bg-white/80">
 	<div class="max-w-5xl mx-auto min-h-screen flex flex-col">
 		<Header avatar={avatarUrl} title={siteName} description={intro} {relatedLinks} />
-		<Navibar avatar={avatarUrl} naviTabs={tabs} />
+		<Navibar avatar={avatarUrl} {displayName} naviTabs={tabs} />
 		<div class="px-8 py-3">
 			{@render children()}
 		</div>

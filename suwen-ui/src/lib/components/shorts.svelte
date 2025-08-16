@@ -15,8 +15,8 @@
 		<Tooltip.Provider delayDuration={0}>
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					<a href="/shorts" class="text-sm text-gray-500 hover:underline">
-						<ChevronRight class="w-5 h-5 text-gray-400" />
+					<a href="/shorts">
+						<ChevronRight class="w-5 h-5" />
 					</a>
 				</Tooltip.Trigger>
 				<Tooltip.Content>

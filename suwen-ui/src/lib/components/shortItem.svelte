@@ -10,6 +10,5 @@
 		{width}
 		{height}
 		class="w-full h-full object-cover sm:hover:scale-105 sm:transition-transform sm:duration-400 sm:ease-in-out rounded-lg"
-		draggable="false"
 	/>
 </a>

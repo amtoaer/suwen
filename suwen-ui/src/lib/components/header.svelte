@@ -9,7 +9,7 @@
 	<div class="flex items-start justify-between mb-4 sm:mb-6">
 		<div class="flex items-start gap-4 sm:gap-6">
 			<Avatar class="w-20 h-20 sm:w-30 sm:h-30 border-3 sm:border-4 border-white shadow-lg">
-				<AvatarImage fetchpriority="high" src={avatar} alt="Profile" draggable="false" />
+				<AvatarImage fetchpriority="high" src={avatar} alt="Profile" />
 			</Avatar>
 			<div class="flex-1">
 				<h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{title}</h1>

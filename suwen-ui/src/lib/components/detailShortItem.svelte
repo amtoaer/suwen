@@ -12,7 +12,7 @@
 	let api = $state<CarouselAPI>();
 </script>
 
-<a href={`/shorts/${slug}`} draggable="false">
+<a href={`/shorts/${slug}`}>
 	<div class="size-full">
 		<Carousel
 			setApi={(emblaApi) => (api = emblaApi)}
