@@ -6,11 +6,8 @@ pub mod manager;
 
 use anyhow::Result;
 use std::{fs::create_dir_all, path::PathBuf, sync::LazyLock};
-use two_face::theme::EmbeddedThemeName;
 
 use pulldown_cmark::{Event, Options, Tag, TagEnd};
-
-use crate::highlighter::Highlighter;
 
 pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let env_path = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".into());

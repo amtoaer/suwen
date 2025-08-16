@@ -293,8 +293,7 @@ mod tests {
     #[ignore = "only for manual test"]
     #[test]
     fn test_parse_markdown() {
-        let content = read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported_副本/jie-ba-6-xiang-jie-di-yi-tan--quan-jiao-de-zheng-ti-jie-shao.md").unwrap();
-        let events = parse_markdown(&content);
-        dbg!(events);
+        let content = read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported/street-fighter-6-introduction-1.md").unwrap();
+        let _ = parse_markdown(&content);
     }
 }
