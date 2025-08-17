@@ -13,7 +13,12 @@
 	<link rel="icon" href={avatarUrl} />
 </svelte:head>
 
-<ProgressBar color="#7F57F1" displayThresholdMs={0} intervalTime={200} settleTime={200} />
+<ProgressBar
+	color="var(--color-red-400)"
+	displayThresholdMs={0}
+	intervalTime={200}
+	settleTime={200}
+/>
 
 <div class="min-h-screen bg-white/80">
 	<div class="max-w-5xl mx-auto min-h-screen flex flex-col">

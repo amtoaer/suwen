@@ -116,8 +116,8 @@
 								href="#{item.id}"
 								class="block text-left text-sm py-1 border-l-2 transition-colors no-underline {activeId ===
 								item.id
-									? 'text-blue-600 border-blue-500 bg-blue-50'
-									: 'text-gray-600 hover:text-gray-900 border-transparent hover:border-blue-500'}"
+									? 'text-red-600 border-red-500 bg-red-50'
+									: 'text-gray-600 hover:text-gray-900 border-transparent hover:border-red-500'}"
 								style="padding-left: {item.level * 12 + 12}px;"
 							>
 								<span class="truncate block">{item.text}</span>
