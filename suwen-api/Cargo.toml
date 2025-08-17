@@ -9,12 +9,14 @@ publish = { workspace = true }
 suwen_migration = { workspace = true }
 suwen_entity = { workspace = true }
 suwen_markdown = { workspace = true }
+suwen_llm = { workspace = true }
 
 anyhow = { workspace = true }
 axum = { workspace = true }
 axum-reverse-proxy = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
+futures = { workspace = true }
 reqwest = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }

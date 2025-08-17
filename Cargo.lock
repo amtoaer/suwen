@@ -1623,6 +1623,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5e54036fe321fd421e10d732f155734c4e4afd610dd556d9a82833ab3ee0bed"
 
 [[package]]
+name = "llm"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "011006edfd6e1294f7eb7b24e1937ddc139f9e5f874e76d7c998e28f7cca21d1"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "dirs",
+ "either",
+ "futures",
+ "log",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2459,6 +2480,7 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
+ "mime_guess",
  "percent-encoding",
  "pin-project-lite",
  "quinn",
@@ -3231,12 +3253,14 @@ dependencies = [
  "axum-reverse-proxy",
  "chrono",
  "dirs",
+ "futures",
  "reqwest",
  "sea-orm",
  "serde",
  "serde_json",
  "sha2",
  "suwen_entity",
+ "suwen_llm",
  "suwen_markdown",
  "suwen_migration",
  "tokio",
@@ -3252,6 +3276,15 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "suwen_llm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "autocorrect",
+ "llm",
 ]
 
 [[package]]

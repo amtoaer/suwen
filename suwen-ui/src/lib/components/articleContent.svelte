@@ -79,7 +79,7 @@
 	{#if summary}
 		<div class="border rounded-lg my-8 bg-gray-50 px-8">
 			<h3 class="text-lg font-semibold mb-2">AI 摘要</h3>
-			<p class="text-gray-600">{summary}</p>
+			<p class="text-gray-600 whitespace-pre-wrap">{summary}</p>
 		</div>
 	{/if}
 	<div class="relative">

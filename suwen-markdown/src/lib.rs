@@ -18,10 +18,6 @@ pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     path
 });
 
-pub fn format_markdown(input: &str) -> String {
-    autocorrect::format_for(input, "markdown").out
-}
-
 pub fn parse_markdown(input: &str) -> Result<Vec<Event<'_>>> {
     let parser = pulldown_cmark::Parser::new_ext(
         &input,

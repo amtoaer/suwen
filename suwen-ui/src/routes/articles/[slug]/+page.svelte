@@ -21,7 +21,7 @@
 	title={article.title}
 	content={article.renderedHtml}
 	toc={article.toc}
-	summary={null}
+	summary={article.summary}
 	publishedDate={article.publishedAt}
 	tags={article.tags}
 	views={article.viewCount}

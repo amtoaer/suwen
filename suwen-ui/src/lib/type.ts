@@ -36,6 +36,7 @@ export interface ArticleByList {
 export interface ArticleBySlug {
 	title: string;
 	renderedHtml: string;
+	summary: string | null;
 	toc: TocItem[];
 	tags: string[];
 	viewCount: number;

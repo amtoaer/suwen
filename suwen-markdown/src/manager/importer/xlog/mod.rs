@@ -9,7 +9,6 @@ use std::{
 };
 
 use crate::{
-    format_markdown,
     manager::importer::{Markdown, xlog::schema::Content},
     parse_markdown,
 };
@@ -64,8 +63,10 @@ fn extract_type(content: &Content) -> Option<&str> {
 }
 
 fn format_content(content: &mut Content) {
-    content.metadata.content.title = format_markdown(&content.metadata.content.title);
-    content.metadata.content.content = format_markdown(&content.metadata.content.content);
+    content.metadata.content.title =
+        autocorrect::format_for(&content.metadata.content.title, "markdown").out;
+    content.metadata.content.content =
+        autocorrect::format_for(&content.metadata.content.content, "markdown").out;
 }
 
 fn extract_slug(content: &Content) -> Result<String> {

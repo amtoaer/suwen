@@ -6,12 +6,15 @@ use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagW
 use crate::db::utils::sha256_hash;
 use anyhow::Result;
 use chrono::Datelike;
+use futures::TryStreamExt;
+use futures::stream::FuturesUnordered;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ColumnTrait, ConnectionTrait, JoinType, TransactionTrait};
 use sea_orm::{
     DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
 };
 use suwen_entity::*;
+use suwen_llm::generate_article_summary;
 use suwen_markdown::manager::MarkdownManager;
 use suwen_markdown::manager::importer::Markdown;
 use suwen_migration::OnConflict;
@@ -86,18 +89,19 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         })
         .exec(&txn)
         .await?;
-        txn.commit().await?;
         let all_markdown_files = MarkdownManager::new(
             PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
             None,
         )
         .all_markdown_files()
         .await?;
-        for file in all_markdown_files {
-            create_article(&conn, file, Lang::ZhCN).await?;
-        }
+        let tasks = all_markdown_files
+            .into_iter()
+            .map(|file| create_article(&txn, file, Lang::ZhCN))
+            .collect::<FuturesUnordered<_>>();
+        tasks.try_collect::<Vec<_>>().await?;
+        txn.commit().await?;
     }
-
     Ok(())
 }
 
@@ -225,6 +229,7 @@ pub async fn get_article_by_slug(
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::RenderedHtml, "rendered_html")
         .column_as(content::Column::Toc, "toc")
+        .column_as(content::Column::Summary, "summary")
         .inner_join(content::Entity)
         .filter(content_metadata::Column::ContentType.eq("article"))
         .filter(content::Column::LangCode.eq(lang.to_string()))
@@ -316,12 +321,12 @@ pub async fn get_articles_by_tag(
 }
 
 pub async fn create_article(
-    conn: &DatabaseConnection,
+    conn: &impl ConnectionTrait,
     markdown: Markdown,
     lang: Lang,
 ) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
-    let txn = match markdown {
+    match markdown {
         Markdown::Article {
             slug,
             title,
@@ -332,7 +337,7 @@ pub async fn create_article(
             updated_at,
             published_at,
         } => {
-            let txn = conn.begin().await?;
+            let summary = generate_article_summary(&content).await?;
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
                 content_type: Set("article".into()),
@@ -346,7 +351,7 @@ pub async fn create_article(
                 original_lang: Set(lang.to_string()),
                 ..Default::default()
             })
-            .exec(&txn)
+            .exec(conn)
             .await?;
             content::Entity::insert(content::ActiveModel {
                 title: Set(title),
@@ -354,10 +359,11 @@ pub async fn create_article(
                 rendered_html: Set(rendered_html),
                 toc: Set(toc),
                 lang_code: Set(lang.to_string()),
+                summary: Set(summary),
                 content_metadata_id: Set(result.last_insert_id),
                 ..Default::default()
             })
-            .exec(&txn)
+            .exec(conn)
             .await?;
             if tags.len() > 0 {
                 let tag_models = tags
@@ -374,11 +380,11 @@ pub async fn create_article(
                             .to_owned(),
                     )
                     .do_nothing()
-                    .exec(&txn)
+                    .exec(conn)
                     .await?;
                 let tag_records = tag::Entity::find()
                     .filter(tag::Column::TagName.is_in(tags))
-                    .all(&txn)
+                    .all(conn)
                     .await?;
                 let tag_associations = tag_records
                     .into_iter()
@@ -389,10 +395,9 @@ pub async fn create_article(
                     })
                     .collect::<Vec<_>>();
                 content_metadata_tag::Entity::insert_many(tag_associations)
-                    .exec(&txn)
+                    .exec(conn)
                     .await?;
             }
-            txn
         }
         Markdown::Short {
             slug,
@@ -403,7 +408,6 @@ pub async fn create_article(
             updated_at,
             published_at,
         } => {
-            let txn = conn.begin().await?;
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
                 content_type: Set("gallery".into()),
@@ -417,7 +421,7 @@ pub async fn create_article(
                 published_at: Set(Some(published_at)),
                 ..Default::default()
             })
-            .exec(&txn)
+            .exec(conn)
             .await?;
             content::Entity::insert(content::ActiveModel {
                 title: Set(title),
@@ -426,11 +430,9 @@ pub async fn create_article(
                 content_metadata_id: Set(result.last_insert_id),
                 ..Default::default()
             })
-            .exec(&txn)
+            .exec(conn)
             .await?;
-            txn
         }
     };
-    txn.commit().await?;
     Ok(())
 }

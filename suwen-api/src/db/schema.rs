@@ -32,6 +32,7 @@ pub struct ArticleByList {
 pub struct ArticleBySlug {
     pub title: String,
     pub rendered_html: String,
+    pub summary: Option<String>,
     pub tags: VecString,
     pub toc: Toc,
     pub view_count: i32,
