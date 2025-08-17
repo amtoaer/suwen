@@ -4,8 +4,18 @@
 	import { Eye, MessageSquare } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { slug, coverImages, title, description, tags, viewCount, commentCount, publishedAt, lazy } =
-		$props();
+	let {
+		slug,
+		coverImages,
+		title,
+		intro,
+		summary,
+		tags,
+		viewCount,
+		commentCount,
+		publishedAt,
+		lazy
+	} = $props();
 
 	let formatDate = (date: Date) => {
 		const now = new Date();
@@ -44,12 +54,14 @@
 				{...lazy ? { loading: 'lazy' } : {}}
 			/>
 		</div>
-		<CardContent class="px-4 pb-4 flex flex-col flex-1">
-			<h3 class="font-semibold text-gray-900 mb-2">{title}</h3>
-			<p class="text-gray-600 text-sm mb-3 line-clamp-2 flex-1">
-				{description}
+		<CardContent class="px-4 pb-4 grid grid-rows-[auto_1fr_auto_auto] gap-2">
+			<h3 class="font-semibold text-gray-900 min-h-[2.5rem] flex leading-tight">
+				{title}
+			</h3>
+			<p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">
+				{intro || summary}
 			</p>
-			<div class="flex items-center justify-between text-xs text-gray-500 mt-auto">
+			<div class="flex items-center justify-between text-xs text-gray-500">
 				<div class="flex items-center gap-4">
 					{#if tags.length > 0}
 						<Badge
@@ -71,7 +83,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="text-xs text-gray-400 mt-2 pl-1">{formatDate(new Date(publishedAt))}</div>
+			<div class="text-xs text-gray-400 pl-1">{formatDate(new Date(publishedAt))}</div>
 		</CardContent>
 	</Card>
 </a>
