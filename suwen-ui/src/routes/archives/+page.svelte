@@ -4,8 +4,13 @@
 	import { Archive } from '@lucide/svelte';
 	let { data }: PageProps = $props();
 
-	let { tags, archives } = data;
+	let { tags, archives, siteName, intro } = data;
 </script>
+
+<svelte:head>
+	<title>归档 - {siteName}</title>
+	<meta name="description" content={intro} />
+</svelte:head>
 
 <div class="flex items-center mb-6">
 	<Archive class="size-7 mr-2 " />

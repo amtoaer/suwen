@@ -7,6 +7,7 @@
 
 <svelte:head>
 	<title>{data.short.title} - {data.siteName}</title>
+	<meta name="description" content={data.short.content} />
 </svelte:head>
 
 <ShortContent {...data.short} />

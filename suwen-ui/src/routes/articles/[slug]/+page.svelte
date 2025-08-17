@@ -15,6 +15,7 @@
 
 <svelte:head>
 	<title>{article.title} - {siteName}</title>
+	<meta name="description" content={article.intro || article.summary} />
 </svelte:head>
 
 <ArticleContent
