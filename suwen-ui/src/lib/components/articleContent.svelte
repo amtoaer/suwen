@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Eye } from '@lucide/svelte';
+	import { Eye, Sparkles } from '@lucide/svelte';
 	import { Badge } from './ui/badge';
 	import { onMount } from 'svelte';
 	import { MessageSquareCode, ThumbsUp } from '@lucide/svelte';
@@ -77,8 +77,11 @@
 		</div>
 	</div>
 	{#if summary}
-		<div class="border rounded-lg my-8 bg-gray-50 px-8">
-			<h3 class="text-lg font-semibold mb-2">AI 摘要</h3>
+		<div class="border rounded-lg my-8 bg-gray-50 px-6">
+			<h3 class="text-lg font-semibold flex items-center">
+				<Sparkles class="w-4 h-4 mr-2" />
+				AI 摘要
+			</h3>
 			<p class="text-gray-600 whitespace-pre-wrap">{summary}</p>
 		</div>
 	{/if}
