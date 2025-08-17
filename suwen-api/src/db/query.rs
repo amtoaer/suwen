@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::db::Lang;
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagWithCount};
 use crate::db::utils::sha256_hash;
+use crate::db::{ArticleForRSS, Lang};
 use anyhow::Result;
 use chrono::Datelike;
 use futures::TryStreamExt;
@@ -113,6 +113,8 @@ pub async fn get_site(conn: &impl ConnectionTrait) -> Result<Option<Site>> {
             site::Column::Intro,
             site::Column::RelatedLinks,
             site::Column::Tabs,
+            site::Column::CreatedAt,
+            site::Column::UpdatedAt,
         ])
         .column_as(user::Column::DisplayName, "display_name")
         .column_as(user::Column::AvatarUrl, "avatar_url")
@@ -144,8 +146,11 @@ pub async fn get_articles(
         .column_as(content::Column::Intro, "intro")
         .column_as(content::Column::Summary, "summary")
         .inner_join(content::Entity)
-        .filter(content_metadata::Column::ContentType.eq("article"))
-        .filter(content::Column::LangCode.eq(lang.to_string()))
+        .filter(
+            content_metadata::Column::ContentType
+                .eq("article")
+                .and(content::Column::LangCode.eq(lang.to_string())),
+        )
         .order_by_desc(sort_column)
         .limit(limit);
     let query = if let Some(published) = published {
@@ -158,6 +163,37 @@ pub async fn get_articles(
         query
     };
     Ok(query.into_model::<ArticleByList>().all(conn).await?)
+}
+
+pub async fn get_rss_articles(
+    conn: &DatabaseConnection,
+    lang: Lang,
+    limit: u64,
+) -> Result<Vec<ArticleForRSS>> {
+    Ok(content_metadata::Entity::find()
+        .select_only()
+        .columns([
+            content_metadata::Column::Slug,
+            content_metadata::Column::Tags,
+            content_metadata::Column::UpdatedAt,
+            content_metadata::Column::PublishedAt,
+        ])
+        .column_as(content::Column::Title, "title")
+        .column_as(content::Column::Intro, "intro")
+        .column_as(content::Column::Summary, "summary")
+        .column_as(content::Column::RenderedHtml, "rendered_html")
+        .inner_join(content::Entity)
+        .filter(
+            content_metadata::Column::ContentType
+                .eq("article")
+                .and(content::Column::LangCode.eq(lang.to_string()))
+                .and(content_metadata::Column::PublishedAt.is_not_null()),
+        )
+        .order_by_desc(content_metadata::Column::PublishedAt)
+        .limit(limit)
+        .into_model::<ArticleForRSS>()
+        .all(conn)
+        .await?)
 }
 
 pub async fn get_shorts(
@@ -176,8 +212,11 @@ pub async fn get_shorts(
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
         .inner_join(content::Entity)
-        .filter(content_metadata::Column::ContentType.eq("gallery"))
-        .filter(content::Column::LangCode.eq(lang.to_string()))
+        .filter(
+            content_metadata::Column::ContentType
+                .eq("gallery")
+                .and(content::Column::LangCode.eq(lang.to_string())),
+        )
         .order_by_desc(sort_column)
         .limit(limit as u64);
     let query = if let Some(published) = published {
@@ -206,9 +245,13 @@ pub async fn get_short_by_slug(
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
         .inner_join(content::Entity)
-        .filter(content_metadata::Column::ContentType.eq("gallery"))
-        .filter(content::Column::LangCode.eq(lang.to_string()))
-        .filter(content_metadata::Column::Slug.eq(slug))
+        .filter(
+            content_metadata::Column::ContentType
+                .eq("gallery")
+                .and(content::Column::LangCode.eq(lang.to_string()))
+                .and(content_metadata::Column::Slug.eq(slug))
+                .and(content_metadata::Column::PublishedAt.is_not_null()),
+        )
         .into_model::<Short>()
         .one(conn)
         .await?)
@@ -234,9 +277,13 @@ pub async fn get_article_by_slug(
         .column_as(content::Column::Summary, "summary")
         .column_as(content::Column::Intro, "intro")
         .inner_join(content::Entity)
-        .filter(content_metadata::Column::ContentType.eq("article"))
-        .filter(content::Column::LangCode.eq(lang.to_string()))
-        .filter(content_metadata::Column::Slug.eq(slug))
+        .filter(
+            content_metadata::Column::ContentType
+                .eq("article")
+                .and(content::Column::LangCode.eq(lang.to_string()))
+                .and(content_metadata::Column::Slug.eq(slug))
+                .and(content_metadata::Column::PublishedAt.is_not_null()),
+        )
         .into_model::<ArticleBySlug>()
         .one(conn)
         .await?)
@@ -315,9 +362,14 @@ pub async fn get_articles_by_tag(
             JoinType::InnerJoin,
             content_metadata::Relation::Content.def(),
         )
-        .filter(tag::Column::TagName.eq(tag_name))
-        .filter(content_metadata::Column::ContentType.eq("article"))
-        .filter(content::Column::LangCode.eq(lang.to_string()))
+        .filter(
+            tag::Column::TagName.eq(tag_name).and(
+                content_metadata::Column::ContentType
+                    .eq("article")
+                    .and(content::Column::LangCode.eq(lang.to_string()))
+                    .and(content_metadata::Column::PublishedAt.is_not_null()),
+            ),
+        )
         .order_by_desc(sort_column)
         .limit(limit)
         .into_model::<ArticleByList>()

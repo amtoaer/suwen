@@ -2,6 +2,7 @@
 	import { Avatar, AvatarImage } from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import { Rss } from '@lucide/svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	let { avatar, title, description, relatedLinks } = $props();
 </script>
 
@@ -36,9 +37,25 @@
 			</div>
 		</div>
 		<div class="flex items-center pr-3 mt-1">
-			<Button variant="ghost" size="icon" class="h-5 w-5 sm:h-10 sm:w-10" aria-label="RSS">
-				<Rss class="w-4 h-4" />
-			</Button>
+			<Tooltip.Provider delayDuration={0}>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="h-5 w-5 sm:h-10 sm:w-10"
+							aria-label="RSS"
+							target="_blank"
+							href="/feed"
+						>
+							<Rss class="w-4 h-4" />
+						</Button>
+					</Tooltip.Trigger>
+					<Tooltip.Content>
+						<p>RSS 订阅</p>
+					</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		</div>
 	</div>
 </header>

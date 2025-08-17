@@ -5,6 +5,8 @@ export interface Site {
 	avatarUrl: string;
 	relatedLinks: RelatedLink[];
 	tabs: Tab[];
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface RelatedLink {
@@ -32,7 +34,7 @@ export interface ArticleByList {
 	tags: string[];
 	viewCount: number;
 	commentCount: number;
-	publishedAt: string; // ISO date string
+	publishedAt: string;
 }
 
 export interface ArticleBySlug {
@@ -44,7 +46,7 @@ export interface ArticleBySlug {
 	tags: string[];
 	viewCount: number;
 	commentCount: number;
-	publishedAt: string; // ISO date string
+	publishedAt: string;
 }
 
 export interface Short {
@@ -62,7 +64,7 @@ export interface TagWithCount {
 export interface Archive {
 	slug: string;
 	title: string;
-	publishedAt: string; // ISO date string
+	publishedAt: string;
 }
 
 export interface ApiResponse<T> {

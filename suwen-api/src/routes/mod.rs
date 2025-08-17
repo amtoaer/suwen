@@ -12,11 +12,11 @@ use crate::{
     wrapper::{ApiError, ApiResponse},
 };
 
-struct UrlQuery {
-    lang: Option<db::Lang>,
-    sort: Option<content_metadata::Column>,
-    published: Option<bool>,
-    limit: Option<u64>,
+pub(super) struct UrlQuery {
+    pub lang: Option<db::Lang>,
+    pub sort: Option<content_metadata::Column>,
+    pub published: Option<bool>,
+    pub limit: Option<u64>,
 }
 
 impl<'de> serde::Deserialize<'de> for UrlQuery {

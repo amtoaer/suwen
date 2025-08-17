@@ -18,6 +18,7 @@ chrono = { workspace = true }
 dirs = { workspace = true }
 futures = { workspace = true }
 reqwest = { workspace = true }
+rss = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

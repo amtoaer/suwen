@@ -13,6 +13,8 @@ pub struct Site {
     pub avatar_url: String,
     pub related_links: RelatedLinks,
     pub tabs: Tabs,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
@@ -40,6 +42,18 @@ pub struct ArticleBySlug {
     pub toc: Toc,
     pub view_count: i32,
     pub comment_count: i32,
+    pub published_at: DateTime<Local>,
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct ArticleForRSS {
+    pub slug: String,
+    pub title: String,
+    pub intro: Option<String>,
+    pub summary: Option<String>,
+    pub tags: VecString,
+    pub rendered_html: String,
+    pub updated_at: DateTime<Local>,
     pub published_at: DateTime<Local>,
 }
 
