@@ -15,7 +15,7 @@
 		<Tooltip.Provider delayDuration={0}>
 			<Tooltip.Root>
 				<Tooltip.Trigger>
-					<a href="/shorts">
+					<a href="/shorts" aria-label="更多图文">
 						<ChevronRight class="w-5 h-5" />
 					</a>
 				</Tooltip.Trigger>

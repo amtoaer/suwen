@@ -36,7 +36,7 @@
 			</div>
 		</div>
 		<div class="flex items-center pr-3 mt-1">
-			<Button variant="ghost" size="icon" class="h-5 w-5 sm:h-10 sm:w-10">
+			<Button variant="ghost" size="icon" class="h-5 w-5 sm:h-10 sm:w-10" aria-label="RSS">
 				<Rss class="w-4 h-4" />
 			</Button>
 		</div>

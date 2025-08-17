@@ -11,7 +11,9 @@
 			<span>© {author}</span>
 			<span>•</span>
 			<div class="flex items-center gap-1">
-				<span>由 <a href="https://github.com/amtoaer/suwen">SuWen</a> 提供支持</span>
+				<span
+					>由 <a href="https://github.com/amtoaer/suwen" aria-label="SuWen">SuWen</a> 提供支持</span
+				>
 			</div>
 		</div>
 
@@ -31,7 +33,7 @@
 		</div>
 
 		<div class=" flex sm:flex-1 sm:justify-end">
-			<Button variant="ghost" size="icon" class="h-5 w-5 sm:h-10 sm:w-10">
+			<Button variant="ghost" size="icon" class="h-5 w-5 sm:h-10 sm:w-10" aria-label="语言切换">
 				<Languages class="w-4 h-4" />
 			</Button>
 		</div>
