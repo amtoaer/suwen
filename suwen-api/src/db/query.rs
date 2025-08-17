@@ -141,6 +141,8 @@ pub async fn get_articles(
             content_metadata::Column::PublishedAt,
         ])
         .column_as(content::Column::Title, "title")
+        .column_as(content::Column::Intro, "intro")
+        .column_as(content::Column::Summary, "summary")
         .inner_join(content::Entity)
         .filter(content_metadata::Column::ContentType.eq("article"))
         .filter(content::Column::LangCode.eq(lang.to_string()))
@@ -230,6 +232,7 @@ pub async fn get_article_by_slug(
         .column_as(content::Column::RenderedHtml, "rendered_html")
         .column_as(content::Column::Toc, "toc")
         .column_as(content::Column::Summary, "summary")
+        .column_as(content::Column::Intro, "intro")
         .inner_join(content::Entity)
         .filter(content_metadata::Column::ContentType.eq("article"))
         .filter(content::Column::LangCode.eq(lang.to_string()))
@@ -305,6 +308,8 @@ pub async fn get_articles_by_tag(
             content_metadata::Column::PublishedAt,
         ])
         .column(content::Column::Title)
+        .column_as(content::Column::Intro, "intro")
+        .column_as(content::Column::Summary, "summary")
         .inner_join(content_metadata::Entity)
         .join(
             JoinType::InnerJoin,

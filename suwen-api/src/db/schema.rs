@@ -20,6 +20,8 @@ pub struct Site {
 pub struct ArticleByList {
     pub slug: String,
     pub title: String,
+    pub intro: Option<String>,
+    pub summary: Option<String>,
     pub cover_images: VecString,
     pub tags: VecString,
     pub view_count: i32,
@@ -33,6 +35,7 @@ pub struct ArticleBySlug {
     pub title: String,
     pub rendered_html: String,
     pub summary: Option<String>,
+    pub intro: Option<String>,
     pub tags: VecString,
     pub toc: Toc,
     pub view_count: i32,

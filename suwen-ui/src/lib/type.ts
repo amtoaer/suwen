@@ -26,6 +26,8 @@ export interface TocItem {
 export interface ArticleByList {
 	slug: string;
 	title: string;
+	intro: string | null;
+	summary: string | null;
 	coverImages: string[];
 	tags: string[];
 	viewCount: number;
@@ -37,6 +39,7 @@ export interface ArticleBySlug {
 	title: string;
 	renderedHtml: string;
 	summary: string | null;
+	intro: string | null;
 	toc: TocItem[];
 	tags: string[];
 	viewCount: number;

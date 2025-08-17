@@ -2,8 +2,6 @@
 	import ArticleItem from './articleItem.svelte';
 	import Sortbar from './sortbar.svelte';
 
-	let activeFilter = $state('最新');
-
 	let { articles } = $props();
 </script>
 
