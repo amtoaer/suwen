@@ -45,3 +45,17 @@
 		</div>
 	</div>
 </nav>
+
+{#if page.url.pathname === '/'}
+	<div class="px-8 py-4">
+		<div class="bg-red-50 rounded-md px-8 py-4 text-sm">
+			<span>
+				该博客系统正在开发中，开发进度见
+				<a href="https://github.com/amtoaer/suwen" class="text-red-500 hover:underline">GitHub</a>。
+				<br class="block sm:hidden" />
+				可前往
+				<a href="https://blog.allwens.work/" class="text-red-500 hover:underline">xLog 页</a> 以获得更好体验。
+			</span>
+		</div>
+	</div>
+{/if}
