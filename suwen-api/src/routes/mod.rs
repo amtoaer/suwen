@@ -2,15 +2,23 @@ use anyhow::Context;
 use axum::{
     Extension,
     extract::{Path, Query},
+    http::HeaderValue,
+    response::IntoResponse,
     routing::get,
 };
+use axum_extra::extract::cookie::{Cookie, SameSite};
 use sea_orm::DatabaseConnection;
 use suwen_entity::content_metadata;
 
 use crate::{
+    auth::Identity,
     db::{self, Archive},
+    routes::schema::IdentityInfo,
     wrapper::{ApiError, ApiResponse},
 };
+
+mod middleware;
+mod schema;
 
 pub(super) struct UrlQuery {
     pub lang: Option<db::Lang>,
@@ -55,6 +63,27 @@ impl<'de> serde::Deserialize<'de> for UrlQuery {
             limit,
         })
     }
+}
+
+async fn me(Extension(identity): Extension<Identity>) -> impl IntoResponse {
+    let resp = if !matches!(identity, Identity::None) {
+        ApiResponse::ok(Into::<IdentityInfo>::into(identity)).into_response()
+    } else {
+        let id = uuid::Uuid::new_v4();
+        let mut resp =
+            ApiResponse::ok(Into::<IdentityInfo>::into(Identity::Anonymous { id })).into_response();
+        let cookie = Cookie::build(("anonymous", id.simple().to_string()))
+            .path("/")
+            .http_only(true)
+            .same_site(SameSite::Lax)
+            .build();
+        resp.headers_mut().insert(
+            axum::http::header::SET_COOKIE,
+            HeaderValue::from_str(&cookie.to_string()).unwrap(),
+        );
+        resp
+    };
+    resp
 }
 
 async fn get_site(
@@ -114,11 +143,15 @@ async fn get_article_by_slug(
     Query(query): Query<UrlQuery>,
     Path((slug,)): Path<(String,)>,
 ) -> Result<ApiResponse<db::ArticleBySlug>, ApiError> {
-    Ok(ApiResponse::ok(
-        db::get_article_by_slug(&conn, &slug, query.lang.unwrap_or(db::Lang::ZhCN))
-            .await?
-            .ok_or_else(|| ApiError::not_found("Article not found"))?,
-    ))
+    let mut article = db::get_article_by_slug(&conn, &slug, query.lang.unwrap_or(db::Lang::ZhCN))
+        .await?
+        .ok_or_else(|| ApiError::not_found("Article not found"))?;
+    article.view_count += 1;
+    tokio::spawn(async move {
+        let conn_clone = conn.clone();
+        let _ = db::increase_article_view_count(&conn_clone, &slug).await;
+    });
+    Ok(ApiResponse::ok(article))
 }
 
 async fn get_tags_with_count(
@@ -155,6 +188,7 @@ async fn get_articles_by_tag(
 
 pub fn router() -> axum::Router {
     axum::Router::new()
+        .route("/me", get(me))
         .route("/site", get(get_site))
         .route("/articles", get(get_articles))
         .route("/shorts", get(get_shorts))
@@ -163,4 +197,5 @@ pub fn router() -> axum::Router {
         .route("/tags", get(get_tags_with_count))
         .route("/archives", get(get_archives_group_by_year))
         .route("/tags/{tag_name}/articles", get(get_articles_by_tag))
+        .layer(axum::middleware::from_fn(middleware::auth))
 }

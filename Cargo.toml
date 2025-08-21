@@ -6,6 +6,7 @@ members = [
     "suwen-migration",
     "suwen-entity",
     "suwen-llm",
+    "suwen-config",
 ]
 default-members = ['suwen']
 resolver = '2'
@@ -22,15 +23,18 @@ suwen_api = { path = "suwen-api" }
 suwen_migration = { path = "suwen-migration" }
 suwen_entity = { path = "suwen-entity" }
 suwen_llm = { path = "suwen-llm" }
+suwen_config = { path = "suwen-config" }
 
-axum-reverse-proxy = { version = "1.0.3", default-features = false }
 axum = { version = "0.8.4", features = ["macros"] }
+axum-extra = { version = "0.10.1", features = ["cookie"] }
+axum-reverse-proxy = { version = "1.0.3", default-features = false }
 anyhow = "1.0.98"
 autocorrect = "2.14.2"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.43", features = ["derive"] }
 dirs = "6.0.0"
 futures = "0.3.31"
+jsonwebtoken = "9.3.1"
 llm = { version = "1.2.4", features = [
     "rustls-tls",
     "deepseek",
@@ -40,6 +44,7 @@ mime2ext = "0.1.54"
 pathdiff = "0.2.3"
 pulldown-cmark = "0.13.0"
 pulldown-cmark-to-cmark = "21.0.0"
+rand = "0.9.2"
 regex = "1.11.1"
 reqwest = { version = "0.12.22", features = [
     "charset",
@@ -75,4 +80,5 @@ tower-http = { version = "0.6.6", features = [
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["chrono", "json"] }
 two-face = { version = "0.4.3", features = ["syntect-default-onig"] }
+uuid = { version = "1.18.0", features = ["v4"], default-features = false }
 yaml-rust2 = "0.10.3"

@@ -24,6 +24,22 @@ impl<T: Serialize> ApiResponse<T> {
         }
     }
 
+    pub fn bad_request(message: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            status_code: 400,
+            data: None,
+            message: Some(message.into()),
+        }
+    }
+
+    pub fn unauthorized(message: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            status_code: 401,
+            data: None,
+            message: Some(message.into()),
+        }
+    }
+
     pub fn not_found(message: impl Into<Cow<'static, str>>) -> Self {
         Self {
             status_code: 404,

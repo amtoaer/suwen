@@ -17,7 +17,7 @@ use suwen_entity::*;
 use suwen_llm::generate_article_summary;
 use suwen_markdown::manager::MarkdownManager;
 use suwen_markdown::manager::importer::Markdown;
-use suwen_migration::OnConflict;
+use suwen_migration::{Expr, OnConflict};
 
 pub async fn init(conn: &DatabaseConnection) -> Result<()> {
     let txn = conn.begin().await?;
@@ -287,6 +287,18 @@ pub async fn get_article_by_slug(
         .into_model::<ArticleBySlug>()
         .one(conn)
         .await?)
+}
+
+pub async fn increase_article_view_count(conn: &DatabaseConnection, slug: &str) -> Result<()> {
+    content_metadata::Entity::update_many()
+        .filter(content_metadata::Column::Slug.eq(slug))
+        .col_expr(
+            content_metadata::Column::ViewCount,
+            Expr::col(content_metadata::Column::ViewCount).add(1),
+        )
+        .exec(conn)
+        .await?;
+    Ok(())
 }
 
 pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWithCount>> {

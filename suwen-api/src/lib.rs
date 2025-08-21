@@ -16,6 +16,7 @@ use tower_http::{compression::CompressionLayer, services::ServeFile};
 
 use crate::routes::UrlQuery;
 
+mod auth;
 pub mod db;
 mod routes;
 mod rss;
