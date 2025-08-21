@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Avatar, AvatarImage } from '@/components/ui/avatar';
+	import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 	import { Bell, CirclePlus, ChevronDown } from '@lucide/svelte';
 	import { page } from '$app/state';
 	let { avatar, naviTabs, displayName } = $props();
@@ -34,11 +34,14 @@
 				type="button"
 			>
 				<Avatar class="w-7 h-7">
-					<AvatarImage fetchpriority="high" src={avatar} alt="User" />
+					{#if avatar}
+						<AvatarImage fetchpriority="high" src={avatar} alt="User" />
+					{/if}
+					<AvatarFallback>A</AvatarFallback>
 				</Avatar>
 				<span
 					class="ml-2 text-left leading-none font-medium truncate text-gray-600 text-sm hidden sm:block"
-					>{displayName}</span
+					>{displayName || 'Anonymous'}</span
 				>
 				<ChevronDown class="w-4 h-4 text-gray-600 ml-1" />
 			</button>

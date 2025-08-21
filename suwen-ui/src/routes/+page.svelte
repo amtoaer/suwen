@@ -4,7 +4,7 @@
 	import Articles from '@/components/articles.svelte';
 
 	let { data }: PageProps = $props();
-	let { siteName, intro } = data;
+	let { siteName, intro } = data.site;
 
 	let shorts = $derived(data.shorts);
 	let articles = $derived(data.articles);

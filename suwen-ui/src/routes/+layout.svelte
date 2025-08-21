@@ -6,7 +6,9 @@
 	import Footer from '@/components/footer.svelte';
 	import { ProgressBar } from '@prgm/sveltekit-progress-bar';
 	let { data, children }: LayoutProps = $props();
-	const { siteName, intro, avatarUrl, relatedLinks, displayName, tabs } = data;
+
+	let me = $state(data.me);
+	const { siteName, intro, avatarUrl, relatedLinks, displayName, tabs } = data.site;
 </script>
 
 <svelte:head>
@@ -23,7 +25,7 @@
 <div class="min-h-screen bg-white/80">
 	<div class="max-w-5xl mx-auto min-h-screen flex flex-col">
 		<Header avatar={avatarUrl} title={siteName} description={intro} {relatedLinks} />
-		<Navibar avatar={avatarUrl} {displayName} naviTabs={tabs} />
+		<Navibar avatar={me.avatarUrl} displayName={me.displayName} naviTabs={tabs} />
 		<div class="px-8 py-3">
 			{@render children()}
 		</div>

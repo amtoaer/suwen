@@ -1,10 +1,10 @@
 import { request } from '@/api';
 import { type Archive, type TagWithCount } from '@/type';
 
-export const load = async () => {
+export const load = async ({ fetch }) => {
 	const [tags, archives] = await Promise.all([
-		request<TagWithCount[]>('/api/tags'),
-		request<Array<[number, Archive[]]>>('/api/archives')
+		request<TagWithCount[]>(fetch, '/api/tags'),
+		request<Array<[number, Archive[]]>>(fetch, '/api/archives')
 	]);
 	return { tags, archives };
 };

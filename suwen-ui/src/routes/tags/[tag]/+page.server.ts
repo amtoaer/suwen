@@ -1,8 +1,8 @@
 import { request } from '@/api.js';
 
-export const load = async ({ params }) => {
+export const load = async ({ fetch, params }) => {
 	const tag = params.tag;
-	const articles = await request(`/api/tags/${tag}/articles`);
+	const articles = await request(fetch, `/api/tags/${tag}/articles`);
 	return {
 		tag,
 		articles

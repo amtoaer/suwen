@@ -4,7 +4,9 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	let { siteName, article } = data;
+	let { siteName } = data.site;
+
+	let article = $derived(data.article);
 
 	$effect(() => {
 		if (article.renderedHtml) {

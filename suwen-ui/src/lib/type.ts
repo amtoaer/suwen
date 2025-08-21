@@ -67,6 +67,13 @@ export interface Archive {
 	publishedAt: string;
 }
 
+export interface IdentityInfo {
+	avatarUrl?: string;
+	displayName?: string;
+	isAnonymous: boolean;
+	isAdmin: boolean;
+}
+
 export interface ApiResponse<T> {
 	statusCode: number;
 	data?: T;

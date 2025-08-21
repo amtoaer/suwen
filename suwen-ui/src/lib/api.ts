@@ -1,7 +1,8 @@
 import type { ApiResponse } from './type';
 import { browser } from '$app/environment';
 
-export async function request<T>(
+export async function rawRequest(
+	fetch: typeof window.fetch,
 	url: string,
 	options?: {
 		method?: string;
@@ -10,7 +11,7 @@ export async function request<T>(
 		headers?: Record<string, string>;
 		[key: string]: unknown;
 	}
-): Promise<T> {
+): Promise<Response> {
 	if (!browser && !url.startsWith('http')) {
 		url = `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
 	}
@@ -34,6 +35,24 @@ export async function request<T>(
 		headers: requestOptions.headers
 	});
 	const response = await fetch(requestUrl, requestOptions);
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`);
+	}
+	return response;
+}
+
+export async function request<T>(
+	fetch: typeof window.fetch,
+	requestUrl: string,
+	options?: {
+		method?: string;
+		json?: unknown;
+		query?: Record<string, string>;
+		headers?: Record<string, string>;
+		[key: string]: unknown;
+	}
+): Promise<T> {
+	const response = await rawRequest(fetch, requestUrl, options);
 	const apiResponse: ApiResponse<T> = await response.json();
 	if (apiResponse.statusCode >= 400 || !apiResponse.data) {
 		throw new Error(apiResponse.message || `API Error: ${apiResponse.statusCode}`);

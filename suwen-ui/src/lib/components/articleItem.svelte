@@ -41,7 +41,7 @@
 	};
 </script>
 
-<a href={`/articles/${slug}`} class="block">
+<a href={`/articles/${slug}`} class="block" data-sveltekit-preload-data="tap">
 	<Card
 		class="overflow-hidden hover:shadow-lg transition-shadow py-0 group size-full flex flex-col"
 	>

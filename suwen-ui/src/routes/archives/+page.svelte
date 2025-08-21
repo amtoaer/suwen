@@ -3,8 +3,8 @@
 	import type { PageProps } from './$types';
 	import { Archive } from '@lucide/svelte';
 	let { data }: PageProps = $props();
-
-	let { tags, archives, siteName, intro } = data;
+	let { tags, archives } = data;
+	let { siteName, intro } = data.site;
 </script>
 
 <svelte:head>
@@ -34,6 +34,7 @@
 	{#each articles as article}
 		<a
 			href={`/articles/${article.slug}`}
+			data-sveltekit-preload-data="tap"
 			class="flex justify-between items-center py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors"
 		>
 			<span>{article.title}</span>
