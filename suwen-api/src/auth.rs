@@ -10,7 +10,6 @@ use suwen_config::CONFIG;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Claims {
     pub id: i32,
-    pub passwd_version: usize,
     pub exp: usize,
 }
 
@@ -18,7 +17,6 @@ impl Claims {
     pub fn of(me: suwen_entity::user::Model, ttl: usize) -> Self {
         Self {
             id: me.id,
-            passwd_version: 1,
             exp: chrono::Utc::now().timestamp() as usize + ttl,
         }
     }

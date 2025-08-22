@@ -21,10 +21,6 @@ pub(crate) async fn auth(
             .one(&conn)
             .await?
             .context("user not found")?;
-        // TODO: 修改为对比与数据库中是否一致
-        if claims.passwd_version != 1 {
-            return Err(ApiError::unauthorized("Password version mismatch"));
-        }
         // TODO: 修改为严谨的判断
         if me.id == 1 {
             req.extensions_mut().insert(Identity::Admin { me });
