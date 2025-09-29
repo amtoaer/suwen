@@ -7,18 +7,15 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "user"
+        "identity"
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub email: String,
-    pub username: String,
-    pub password_hash: String,
-    pub display_name: String,
-    pub avatar_url: String,
+    pub uuid: Option<Uuid>,
+    pub user_id: Option<i32>,
     pub created_at: DateTimeLocal,
     pub updated_at: DateTimeLocal,
 }
@@ -26,11 +23,8 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Email,
-    Username,
-    PasswordHash,
-    DisplayName,
-    AvatarUrl,
+    Uuid,
+    UserId,
     CreatedAt,
     UpdatedAt,
 }
@@ -49,8 +43,9 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Site,
-    Identity,
+    User,
+    Like,
+    Comment,
 }
 
 impl ColumnTrait for Column {
@@ -58,11 +53,8 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Email => ColumnType::Text.def(),
-            Self::Username => ColumnType::String(StringLen::N(10u32)).def().unique(),
-            Self::PasswordHash => ColumnType::String(StringLen::N(256u32)).def(),
-            Self::DisplayName => ColumnType::String(StringLen::N(10u32)).def(),
-            Self::AvatarUrl => ColumnType::Text.def(),
+            Self::Uuid => ColumnType::Text.def().unique().null(),
+            Self::UserId => ColumnType::Integer.def().null(),
             Self::CreatedAt => ColumnType::DateTime.def(),
             Self::UpdatedAt => ColumnType::DateTime.def(),
         }
@@ -72,21 +64,31 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Site => Entity::has_one(super::site::Entity).into(),
-            Self::Identity => Entity::has_one(super::identity::Entity).into(),
+            Self::User => Entity::belongs_to(super::user::Entity)
+                .from(Column::UserId)
+                .to(super::user::Column::Id)
+                .into(),
+            Self::Like => Entity::has_many(super::like::Entity).into(),
+            Self::Comment => Entity::has_many(super::comment::Entity).into(),
         }
     }
 }
 
-impl Related<super::site::Entity> for Entity {
+impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Site.def()
+        Relation::User.def()
     }
 }
 
-impl Related<super::identity::Entity> for Entity {
+impl Related<super::like::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Identity.def()
+        Relation::Like.def()
+    }
+}
+
+impl Related<super::comment::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Comment.def()
     }
 }
 

@@ -206,10 +206,10 @@ impl Markdown {
         if let Markdown::Article { content, .. } = self {
             let mut events = parse_markdown(content)?;
             events.iter_mut().for_each(|event| {
-                if let Event::Start(Tag::Image { dest_url, .. }) = event {
-                    if let Some(new_url) = replace_pair.get(dest_url.as_ref()) {
-                        *dest_url = new_url.clone().into();
-                    }
+                if let Event::Start(Tag::Image { dest_url, .. }) = event
+                    && let Some(new_url) = replace_pair.get(dest_url.as_ref())
+                {
+                    *dest_url = new_url.clone().into();
                 }
             });
             let mut buf = String::new();
@@ -223,7 +223,7 @@ impl Markdown {
         if matches!(self, Markdown::Short { .. }) {
             return Ok((None, None));
         }
-        let mut events = parse_markdown(&self.content())?;
+        let mut events = parse_markdown(self.content())?;
         let mut toc_item = TocItem {
             id: String::new(),
             text: String::new(),

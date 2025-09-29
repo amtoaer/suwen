@@ -46,6 +46,7 @@ export interface ArticleBySlug {
 	tags: string[];
 	viewCount: number;
 	commentCount: number;
+	likeCount: number;
 	publishedAt: string;
 }
 
@@ -68,10 +69,21 @@ export interface Archive {
 }
 
 export interface IdentityInfo {
+	id: number;
 	avatarUrl?: string;
-	displayName?: string;
+	displayName: string;
 	isAnonymous: boolean;
 	isAdmin: boolean;
+}
+
+export interface Comment {
+	id: number;
+	content: string;
+	commenter: IdentityInfo;
+	replies: Comment[];
+	isDeleted: boolean;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface ApiResponse<T> {

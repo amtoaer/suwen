@@ -2,13 +2,14 @@
 	import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 	import { Bell, CirclePlus, ChevronDown } from '@lucide/svelte';
 	import { page } from '$app/state';
+	import FallbackAvatar from './fallbackAvatar.svelte';
 	let { avatar, naviTabs, displayName } = $props();
 </script>
 
 <nav class="px-8 py-4">
 	<div class="flex items-center justify-between">
 		<div class="flex overflow-x-auto no-scrollbar space-x-8 border-b border-none">
-			{#each naviTabs as tab}
+			{#each naviTabs as tab (tab.url)}
 				<a
 					href={tab.url}
 					class="inline-flex items-center h-10 whitespace-nowrap transition-colors relative text-sm font-medium {page
@@ -30,20 +31,14 @@
 				<div class="w-full h-6 bg-gray-200 rounded-full"></div>
 			</div>
 			<button
-				class="flex items-center hover:bg-gray-50 transition-colors py-1 px-2 rounded-lg ml-2"
+				class="flex items-center hover:bg-gray-50 transition-colors py-1 px-2 rounded-lg ml-2 text-gray-600"
 				type="button"
 			>
-				<Avatar class="w-7 h-7">
-					{#if avatar}
-						<AvatarImage fetchpriority="high" src={avatar} alt="User" />
-					{/if}
-					<AvatarFallback>A</AvatarFallback>
-				</Avatar>
-				<span
-					class="ml-2 text-left leading-none font-medium truncate text-gray-600 text-sm hidden sm:block"
-					>{displayName || 'Anonymous'}</span
+				<FallbackAvatar {avatar} {displayName} class="w-7 h-7" />
+				<span class="ml-2 text-left leading-none font-medium truncate text-sm hidden sm:block"
+					>{displayName}</span
 				>
-				<ChevronDown class="w-4 h-4 text-gray-600 ml-1" />
+				<ChevronDown class="w-4 h-4 ml-1" />
 			</button>
 		</div>
 	</div>

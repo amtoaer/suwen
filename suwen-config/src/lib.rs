@@ -19,6 +19,7 @@ fn random_string(length: usize) -> String {
 pub struct Config {
     pub jwt_secret: String,
     pub openai_api_key: String,
+    pub redis_url: String,
 }
 
 impl Default for Config {
@@ -26,6 +27,7 @@ impl Default for Config {
         Self {
             jwt_secret: random_string(32),
             openai_api_key: String::new(),
+            redis_url: "redis://127.0.0.1/".to_owned(),
         }
     }
 }

@@ -7,10 +7,12 @@ publish = { workspace = true }
 [dependencies]
 suwen_markdown = { workspace = true }
 suwen_api = { workspace = true }
+suwen_config = { workspace = true }
 
 anyhow = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }
+redis = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

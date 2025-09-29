@@ -35,14 +35,11 @@ impl Highlighter {
         events
             .filter_map(|e| match e {
                 Event::Start(Tag::CodeBlock(kind)) => {
-                    match kind {
-                        CodeBlockKind::Fenced(lang) => {
-                            syntax = self
-                                .syntax_set
-                                .find_syntax_by_token(&lang)
-                                .unwrap_or(fallback_syntax);
-                        }
-                        _ => {}
+                    if let CodeBlockKind::Fenced(lang) = kind {
+                        syntax = self
+                            .syntax_set
+                            .find_syntax_by_token(&lang)
+                            .unwrap_or(fallback_syntax);
                     }
                     in_code_block = true;
                     None

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import ArticleItem from './articleItem.svelte';
 	import Sortbar from './sortbar.svelte';
-
 	let { articles } = $props();
 </script>
 
@@ -14,7 +13,7 @@
 />
 
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-	{#each articles as article, idx}
+	{#each articles as article, idx (idx)}
 		<ArticleItem {...article} lazy={idx >= 6} />
 	{/each}
 </div>

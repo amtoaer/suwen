@@ -32,6 +32,7 @@ anyhow = "1.0.98"
 autocorrect = "2.14.2"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.43", features = ["derive"] }
+dashmap = {version = "6.1.0", features = ["serde"] }
 dirs = "6.0.0"
 futures = "0.3.31"
 jsonwebtoken = "9.3.1"
@@ -45,6 +46,7 @@ pathdiff = "0.2.3"
 pulldown-cmark = "0.13.0"
 pulldown-cmark-to-cmark = "21.0.0"
 rand = "0.9.2"
+redis = { version = "0.32.6", features = ["tokio-comp", "connection-manager"] }
 regex = "1.11.1"
 reqwest = { version = "0.12.22", features = [
     "charset",
@@ -62,6 +64,8 @@ sea-orm = { version = "1.1.0", default-features = false, features = [
     "macros",
     "with-chrono",
     "with-json",
+    "with-uuid",
+    "sqlite-use-returning-for-3_35"
 ] }
 sea-orm-migration = "1.1.0"
 serde = "1.0.219"

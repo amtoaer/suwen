@@ -7,18 +7,18 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "user"
+        "comment"
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub id: i32,
-    pub email: String,
-    pub username: String,
-    pub password_hash: String,
-    pub display_name: String,
-    pub avatar_url: String,
+    pub identity_id: i32,
+    pub content_metadata_id: i32,
+    pub parent_id: Option<i32>,
+    pub content: String,
+    pub is_deleted: bool,
     pub created_at: DateTimeLocal,
     pub updated_at: DateTimeLocal,
 }
@@ -26,11 +26,11 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Email,
-    Username,
-    PasswordHash,
-    DisplayName,
-    AvatarUrl,
+    IdentityId,
+    ContentMetadataId,
+    ParentId,
+    Content,
+    IsDeleted,
     CreatedAt,
     UpdatedAt,
 }
@@ -49,8 +49,8 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Site,
     Identity,
+    ContentMetadata,
 }
 
 impl ColumnTrait for Column {
@@ -58,11 +58,11 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::Id => ColumnType::Integer.def(),
-            Self::Email => ColumnType::Text.def(),
-            Self::Username => ColumnType::String(StringLen::N(10u32)).def().unique(),
-            Self::PasswordHash => ColumnType::String(StringLen::N(256u32)).def(),
-            Self::DisplayName => ColumnType::String(StringLen::N(10u32)).def(),
-            Self::AvatarUrl => ColumnType::Text.def(),
+            Self::IdentityId => ColumnType::Integer.def(),
+            Self::ContentMetadataId => ColumnType::Integer.def(),
+            Self::ParentId => ColumnType::Integer.def().null(),
+            Self::Content => ColumnType::Text.def(),
+            Self::IsDeleted => ColumnType::Boolean.def().default(false),
             Self::CreatedAt => ColumnType::DateTime.def(),
             Self::UpdatedAt => ColumnType::DateTime.def(),
         }
@@ -72,21 +72,27 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Site => Entity::has_one(super::site::Entity).into(),
-            Self::Identity => Entity::has_one(super::identity::Entity).into(),
+            Self::Identity => Entity::belongs_to(super::identity::Entity)
+                .from(Column::IdentityId)
+                .to(super::identity::Column::Id)
+                .into(),
+            Self::ContentMetadata => Entity::belongs_to(super::content_metadata::Entity)
+                .from(Column::ContentMetadataId)
+                .to(super::content_metadata::Column::Id)
+                .into(),
         }
-    }
-}
-
-impl Related<super::site::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Site.def()
     }
 }
 
 impl Related<super::identity::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Identity.def()
+    }
+}
+
+impl Related<super::content_metadata::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ContentMetadata.def()
     }
 }
 

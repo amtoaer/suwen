@@ -40,6 +40,14 @@ impl<T: Serialize> ApiResponse<T> {
         }
     }
 
+    pub fn forbidden(message: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            status_code: 403,
+            data: None,
+            message: Some(message.into()),
+        }
+    }
+
     pub fn not_found(message: impl Into<Cow<'static, str>>) -> Self {
         Self {
             status_code: 404,

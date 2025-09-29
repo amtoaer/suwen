@@ -5,9 +5,12 @@ use serde::{Deserialize, Serialize};
 
 pub mod prelude;
 
+pub mod comment;
 pub mod content;
 pub mod content_metadata;
 pub mod content_metadata_tag;
+pub mod identity;
+pub mod like;
 pub mod site;
 pub mod tag;
 pub mod user;
@@ -20,26 +23,26 @@ pub use content::{Toc, TocItem};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct VecString(pub Vec<String>);
 
-impl Into<VecString> for Vec<String> {
-    fn into(self) -> VecString {
-        VecString(self)
+impl From<Vec<String>> for VecString {
+    fn from(v: Vec<String>) -> Self {
+        VecString(v)
     }
 }
 
-impl Into<RelatedLinks> for Vec<RelatedLink> {
-    fn into(self) -> RelatedLinks {
-        RelatedLinks(self)
+impl From<Vec<RelatedLink>> for RelatedLinks {
+    fn from(v: Vec<RelatedLink>) -> Self {
+        RelatedLinks(v)
     }
 }
 
-impl Into<Tabs> for Vec<Tab> {
-    fn into(self) -> Tabs {
-        Tabs(self)
+impl From<Vec<Tab>> for Tabs {
+    fn from(v: Vec<Tab>) -> Self {
+        Tabs(v)
     }
 }
 
-impl Into<Toc> for Vec<TocItem> {
-    fn into(self) -> Toc {
-        Toc(self)
+impl From<Vec<TocItem>> for Toc {
+    fn from(v: Vec<TocItem>) -> Self {
+        Toc(v)
     }
 }

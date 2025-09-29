@@ -66,7 +66,7 @@ impl MarkdownManager {
                 .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or_default();
-            if Self::extract_object_slug_from_file_name(&old_file_name)
+            if Self::extract_object_slug_from_file_name(old_file_name)
                 .is_some_and(|s| s == old_slug)
             {
                 fs::copy(
@@ -89,7 +89,7 @@ impl MarkdownManager {
     pub async fn convert_images(&self, quality: Option<f32>) -> Result<()> {
         let quality = quality.unwrap_or(80.0);
         ensure!(
-            quality >= 0.0 && quality <= 100.0,
+            (0.0..=100.0).contains(&quality),
             "Quality must be between 0.0 and 100.0"
         );
         let mut files_to_convert = vec![];
@@ -116,7 +116,7 @@ impl MarkdownManager {
                     let target_path = file.with_extension("webp");
                     let mut command = Command::new("cwebp");
                     let command = command
-                        .args(&[
+                        .args([
                             "-sharp_yuv",
                             "-mt",
                             "-q",
@@ -156,13 +156,13 @@ impl MarkdownManager {
             files_to_delete.push(old);
             image_rename_map
                 .entry(
-                    Self::extract_object_slug(&old)
+                    Self::extract_object_slug(old)
                         .map(|s| s.to_string())
                         .context(format!("Image file {:?} does not have a valid slug", old))?,
                 )
                 .or_default()
                 .insert(
-                    diff_paths(&old, &self.output)
+                    diff_paths(old, &self.output)
                         .unwrap()
                         .to_string_lossy()
                         .to_string(),

@@ -58,6 +58,7 @@ impl MigrationTrait for Migration {
                     .col(text(ContentMetadata::OriginalLang).default("zh-CN"))
                     .col(integer(ContentMetadata::ViewCount).default(0))
                     .col(integer(ContentMetadata::CommentCount).default(0))
+                    .col(integer(ContentMetadata::LikeCount).default(0))
                     .col(date_time_null(ContentMetadata::PublishedAt))
                     .col(date_time(ContentMetadata::CreatedAt).default(Expr::current_timestamp()))
                     .col(date_time(ContentMetadata::UpdatedAt).default(Expr::current_timestamp()))
@@ -140,6 +141,89 @@ impl MigrationTrait for Migration {
             )
             .await?;
         manager
+            .create_table(
+                Table::create()
+                    .table(Identity::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Identity::Id))
+                    .col(uuid_null(Identity::Uuid).unique_key())
+                    .col(integer_null(Identity::UserId))
+                    .col(date_time(Identity::CreatedAt).default(Expr::current_timestamp()))
+                    .col(date_time(Identity::UpdatedAt).default(Expr::current_timestamp()))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_identity_user")
+                            .from(Identity::Table, Identity::UserId)
+                            .to(User::Table, User::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table(Like::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Like::Id))
+                    .col(integer(Like::IdentityId))
+                    .col(integer_null(Like::ContentMetadataId))
+                    .col(date_time(Like::CreatedAt).default(Expr::current_timestamp()))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_like_identity")
+                            .from(Like::Table, Like::IdentityId)
+                            .to(Identity::Table, Identity::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_like_content_metadata")
+                            .from(Like::Table, Like::ContentMetadataId)
+                            .to(ContentMetadata::Table, ContentMetadata::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_table(
+                Table::create()
+                    .table(Comment::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Comment::Id))
+                    .col(integer(Comment::IdentityId))
+                    .col(integer(Comment::ContentMetadataId))
+                    .col(integer_null(Comment::ParentId))
+                    .col(text(Comment::Content))
+                    .col(boolean(Comment::IsDeleted).default(false))
+                    .col(date_time(Comment::CreatedAt).default(Expr::current_timestamp()))
+                    .col(date_time(Comment::UpdatedAt).default(Expr::current_timestamp()))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_comment_identity")
+                            .from(Comment::Table, Comment::IdentityId)
+                            .to(Identity::Table, Identity::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_comment_content_metadata")
+                            .from(Comment::Table, Comment::ContentMetadataId)
+                            .to(ContentMetadata::Table, ContentMetadata::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_comment_parent")
+                            .from(Comment::Table, Comment::ParentId)
+                            .to(Comment::Table, Comment::Id)
+                            .on_delete(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
             .create_index(
                 Index::create()
                     .name("idx_content_metadata__type_published")
@@ -195,10 +279,64 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-        Ok(())
+        // 新增索引
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_identity_uuid")
+                    .table(Identity::Table)
+                    .col(Identity::Uuid)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_like_identity")
+                    .table(Like::Table)
+                    .col(Like::IdentityId)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_like_content_metadata")
+                    .table(Like::Table)
+                    .col(Like::ContentMetadataId)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_comment_content_metadata")
+                    .table(Comment::Table)
+                    .col(Comment::ContentMetadataId)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_comment_parent")
+                    .table(Comment::Table)
+                    .col(Comment::ParentId)
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(Comment::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Like::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Identity::Table).to_owned())
+            .await?;
         manager
             .drop_table(Table::drop().table(ContentMetadataTag::Table).to_owned())
             .await?;
@@ -234,6 +372,7 @@ enum User {
     UpdatedAt,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum Site {
     Table,
@@ -258,11 +397,13 @@ enum ContentMetadata {
     OriginalLang,
     ViewCount,
     CommentCount,
+    LikeCount,
     PublishedAt,
     CreatedAt,
     UpdatedAt,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum Content {
     Table,
@@ -277,6 +418,7 @@ enum Content {
     Toc,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum Tag {
     Table,
@@ -290,4 +432,36 @@ enum ContentMetadataTag {
     Table,
     ContentMetadataId,
     TagId,
+}
+
+#[derive(DeriveIden)]
+enum Identity {
+    Table,
+    Id,
+    Uuid,
+    UserId,
+    CreatedAt,
+    UpdatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Like {
+    Table,
+    Id,
+    IdentityId,
+    ContentMetadataId,
+    CreatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Comment {
+    Table,
+    Id,
+    IdentityId,
+    ContentMetadataId,
+    ParentId,
+    Content,
+    IsDeleted,
+    CreatedAt,
+    UpdatedAt,
 }

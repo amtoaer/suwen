@@ -6,6 +6,7 @@ use axum::Extension;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use suwen_api::db;
+use suwen_config::CONFIG;
 use suwen_markdown::manager::{MarkdownManager, importer::XlogImporter};
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -87,8 +88,10 @@ async fn main() -> Result<()> {
 }
 
 async fn serve() -> Result<()> {
-    let connection = init().await?;
-    let router = suwen_api::router().layer(Extension(connection.clone()));
+    let (redis_connection, sqlite_connection) = init().await?;
+    let router = suwen_api::router()
+        .layer(Extension(sqlite_connection.clone()))
+        .layer(Extension(redis_connection));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -104,12 +107,12 @@ async fn serve() -> Result<()> {
             info!("Shutting down server...");
         }
     };
-    let _ = connection.close().await;
+    let _ = sqlite_connection.close().await;
     info!("Server shutdown completed");
     Ok(())
 }
 
-async fn init() -> Result<db::DatabaseConnection> {
+async fn init() -> Result<(redis::aio::ConnectionManager, db::DatabaseConnection)> {
     tracing_subscriber::fmt::Subscriber::builder()
         .compact()
         .with_target(false)
@@ -120,9 +123,11 @@ async fn init() -> Result<db::DatabaseConnection> {
         .finish()
         .try_init()
         .expect("Failed to initialize logging");
-    let connection = db::database_connection().await?;
-    db::init(&connection).await?;
-    Ok(connection)
+    let redis_client = redis::Client::open(CONFIG.redis_url.as_str())?;
+    let redis_connection = redis_client.get_connection_manager().await?;
+    let sqlite_connection = db::database_connection().await?;
+    db::init(&sqlite_connection).await?;
+    Ok((redis_connection, sqlite_connection))
 }
 
 async fn import_xlog_content(

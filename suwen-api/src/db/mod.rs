@@ -1,6 +1,9 @@
+mod kv;
 mod query;
+mod redis;
 mod schema;
 mod utils;
+pub use kv::get_metadata_id_for_slug;
 
 use std::{
     fmt::{Display, Formatter},

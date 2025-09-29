@@ -1,4 +1,4 @@
-import { rawRequest, request } from '@/api';
+import { extractApiResponse, rawRequest, request } from '@/api';
 import { type IdentityInfo, type Site } from '@/type';
 
 export const load = async ({ fetch, locals }) => {
@@ -7,7 +7,7 @@ export const load = async ({ fetch, locals }) => {
 	if (setCookie) {
 		locals.setCookie = setCookie;
 	}
-	const me: IdentityInfo = await resp.json();
+	const me: IdentityInfo = await extractApiResponse<IdentityInfo>(resp);
 	const site = await request<Site>(fetch, '/api/site');
 	return { me, site };
 };

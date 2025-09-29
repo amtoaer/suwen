@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Articles from '@/components/articles.svelte';
 	import type { PageProps } from './$types';
 	import { Archive } from '@lucide/svelte';
 	let { data }: PageProps = $props();
@@ -19,7 +18,7 @@
 
 <h2 class="text-lg mb-4">标签</h2>
 <div class="flex flex-wrap gap-2 mb-6">
-	{#each tags as tag}
+	{#each tags as tag (tag.tagName)}
 		<a
 			href={`/tags/${tag.tagName}`}
 			class="px-3 py-1 bg-gray-200 rounded-full text-sm text-gray-800 hover:bg-gray-300"
@@ -29,12 +28,11 @@
 	{/each}
 </div>
 
-{#each archives as [year, articles]}
+{#each archives as [year, articles] (year)}
 	<h2 class="text-lg mt-5 mb-4">{year} 年</h2>
-	{#each articles as article}
+	{#each articles as article (article.slug)}
 		<a
 			href={`/articles/${article.slug}`}
-			data-sveltekit-preload-data="tap"
 			class="flex justify-between items-center py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors"
 		>
 			<span>{article.title}</span>

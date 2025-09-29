@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use suwen_entity::{RelatedLinks, Tabs, Toc, VecString};
 
+use crate::routes::IdentityInfo;
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 #[serde(rename_all = "camelCase")]
 pub struct Site {
@@ -42,6 +44,7 @@ pub struct ArticleBySlug {
     pub toc: Toc,
     pub view_count: i32,
     pub comment_count: i32,
+    pub like_count: i32,
     pub published_at: DateTime<Local>,
 }
 
@@ -79,4 +82,30 @@ pub struct Archive {
     pub slug: String,
     pub title: String,
     pub published_at: DateTime<Local>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub id: i32,
+    pub content: String,
+    pub commenter: IdentityInfo,
+    pub replies: Vec<Comment>,
+    pub is_deleted: bool,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
+}
+
+impl From<(IdentityInfo, suwen_entity::comment::Model)> for Comment {
+    fn from((commenter, comment): (IdentityInfo, suwen_entity::comment::Model)) -> Self {
+        Self {
+            id: comment.id,
+            content: comment.content,
+            commenter,
+            replies: vec![],
+            is_deleted: comment.is_deleted,
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
+        }
+    }
 }

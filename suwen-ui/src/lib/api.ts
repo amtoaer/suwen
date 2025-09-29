@@ -35,9 +35,6 @@ export async function rawRequest(
 		headers: requestOptions.headers
 	});
 	const response = await fetch(requestUrl, requestOptions);
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`);
-	}
 	return response;
 }
 
@@ -53,8 +50,12 @@ export async function request<T>(
 	}
 ): Promise<T> {
 	const response = await rawRequest(fetch, requestUrl, options);
+	return await extractApiResponse<T>(response);
+}
+
+export async function extractApiResponse<T>(response: Response): Promise<T> {
 	const apiResponse: ApiResponse<T> = await response.json();
-	if (apiResponse.statusCode >= 400 || !apiResponse.data) {
+	if (apiResponse.statusCode >= 400 || apiResponse.data === undefined) {
 		throw new Error(apiResponse.message || `API Error: ${apiResponse.statusCode}`);
 	}
 	return apiResponse.data;

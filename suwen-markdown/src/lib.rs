@@ -20,7 +20,7 @@ pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 pub fn parse_markdown(input: &str) -> Result<Vec<Event<'_>>> {
     let parser = pulldown_cmark::Parser::new_ext(
-        &input,
+        input,
         Options::ENABLE_GFM
             | Options::ENABLE_TABLES
             | Options::ENABLE_TASKLISTS

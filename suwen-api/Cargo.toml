@@ -17,9 +17,11 @@ axum = { workspace = true }
 axum-extra = { workspace = true }
 axum-reverse-proxy = { workspace = true }
 chrono = { workspace = true }
+dashmap = { workspace = true }
 dirs = { workspace = true }
 futures = { workspace = true }
 jsonwebtoken = { workspace = true }
+redis = { workspace = true }
 reqwest = { workspace = true }
 rss = { workspace = true }
 sea-orm = { workspace = true }

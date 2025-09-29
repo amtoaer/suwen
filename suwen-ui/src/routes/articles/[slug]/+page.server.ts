@@ -1,10 +1,17 @@
 import { request } from '@/api';
-import type { ArticleBySlug } from '@/type';
+import type { ArticleBySlug, Comment } from '@/type';
 
 export const load = async ({ fetch, params }) => {
 	const { slug } = params;
-	const article = await request<ArticleBySlug>(fetch, `/api/articles/${slug}`);
+	const [article, comments, likes] = await Promise.all([
+		request<ArticleBySlug>(fetch, `/api/articles/${slug}`),
+		request<Comment[]>(fetch, `/api/articles/${slug}/comments`),
+		request<boolean>(fetch, `/api/articles/${slug}/likes`)
+	]);
 	return {
-		article
+		article,
+		comments,
+		slug,
+		liked: likes
 	};
 };

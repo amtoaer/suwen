@@ -51,7 +51,7 @@ pub async fn import_file(
 }
 
 async fn read_content(source: &Path) -> Result<Content> {
-    if !source.extension().is_some_and(|ext| ext == "json") {
+    if source.extension().is_none_or(|ext| ext != "json") {
         bail!("Unsupported file type: {}", source.display());
     }
     let json = read_to_string(&source).await?;
@@ -143,7 +143,7 @@ async fn handle_post(
             Event::InlineHtml(inline_html_content) => {
                 filtered_events.push(Event::InlineHtml(
                     rewrite_html(
-                        &inline_html_content,
+                        inline_html_content,
                         output.to_path_buf(),
                         obj_output.to_path_buf(),
                         slug.clone(),
@@ -156,7 +156,7 @@ async fn handle_post(
             Event::Html(html_content) => {
                 filtered_events.push(Event::Html(
                     rewrite_html(
-                        &html_content,
+                        html_content,
                         output.to_path_buf(),
                         obj_output.to_path_buf(),
                         slug.clone(),
@@ -255,7 +255,7 @@ async fn download_replace(url: &str, output: &Path, target: &Path) -> Result<Str
     }
     Ok(match download(&url, target).await {
         // 成功，替换成下载的文件相对文章的相对路径
-        Ok(file) => diff_paths(&file, &output)
+        Ok(file) => diff_paths(&file, output)
             .unwrap()
             .to_string_lossy()
             .to_string(),
@@ -309,7 +309,7 @@ async fn collect_videos(html: &str) -> Result<Vec<String>> {
     );
     scanner.write(html.as_bytes())?;
     scanner.end()?;
-    return Ok(videos);
+    Ok(videos)
 }
 
 async fn rewrite_html(
@@ -346,7 +346,7 @@ async fn rewrite_html(
                 element!("source[src]", move |el| {
                     let video_url = el.get_attribute("src").unwrap_or_default();
                     if let Some(new_url) = url_map.get(&video_url) {
-                        el.set_attribute("src", &new_url)?;
+                        el.set_attribute("src", new_url)?;
                     }
                     Ok(())
                 }),

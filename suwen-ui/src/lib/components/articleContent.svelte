@@ -5,10 +5,26 @@
 	import { MessageSquareCode, ThumbsUp } from '@lucide/svelte';
 	import type { TocItem } from '@/type';
 	import { browser } from '$app/environment';
+	import { request } from '@/api';
 
-	let { title = null, content, summary = null, publishedDate, views, tags = null, toc } = $props();
+	let {
+		slug = null,
+		title = null,
+		content,
+		summary = null,
+		publishedDate,
+		views,
+		likes,
+		tags = null,
+		toc,
+		comments,
+		liked,
+		setViews,
+		setLikes,
+		setLiked
+	} = $props();
 
-	let contentElement: HTMLElement;
+	let contentElement: HTMLElement | null = null;
 
 	let activeId = $state('');
 	let tocMaxWidth = $state(0);
@@ -23,6 +39,11 @@
 	$effect(() => {
 		if (!contentElement || !content) return;
 		handleScroll();
+		request<number>(fetch, `/api/articles/${slug}/views`, {
+			method: 'POST'
+		}).then((newViews) => {
+			setViews(newViews);
+		});
 	});
 
 	const handleScroll = () => {
@@ -38,8 +59,21 @@
 
 	const handleResize = () => {
 		const padding = 20;
-		const availableWidth = (window.innerWidth - contentElement.clientWidth) / 2 - padding;
+		const availableWidth = (window.innerWidth - contentElement!.clientWidth) / 2 - padding;
 		tocMaxWidth = availableWidth;
+	};
+
+	const likeArticleContent = async () => {
+		try {
+			const likeCount = await request<number>(fetch, `/api/articles/${slug}/likes`, {
+				method: 'POST',
+				json: { like: !liked }
+			});
+			setLiked(!liked);
+			setLikes(likeCount);
+		} catch (error) {
+			console.error('Error liking the article:', error);
+		}
 	};
 
 	onMount(() => {
@@ -62,7 +96,7 @@
 		<span>{new Date(publishedDate).toLocaleDateString('zh-CN')}</span>
 		{#if tags && tags.length > 0}
 			<div class="flex items-center gap-2">
-				{#each tags as tag}
+				{#each tags as tag (tag)}
 					<Badge
 						variant="secondary"
 						class="text-xs bg-secondary/50 hover:bg-secondary text-secondary-foreground no-underline"
@@ -90,17 +124,24 @@
 			<div class="sticky top-2/3 flex flex-col gap-4">
 				<button
 					class="flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+					onclick={likeArticleContent}
 				>
-					<ThumbsUp class="w-6 h-6" />
-					<span class="text-xs text-gray-500">点赞</span>
+					<ThumbsUp class="w-6 h-6" color={liked ? 'red' : undefined} />
+					<span class="text-xs text-gray-500">{likes}</span>
 				</button>
 				<button
 					class="flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+					onclick={() => {
+						const commentsSection = document.getElementById('comments');
+						if (commentsSection) {
+							commentsSection.scrollIntoView({ behavior: 'smooth' });
+						}
+					}}
 				>
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<MessageSquareCode class="w-6 h-6" />
 					</svg>
-					<span class="text-xs text-gray-500">评论</span>
+					<span class="text-xs text-gray-500">{comments.length}</span>
 				</button>
 			</div>
 		</aside>
@@ -111,7 +152,7 @@
 			>
 				<div class="sticky top-8 truncate">
 					<nav class="space-y-1">
-						{#each toc as item}
+						{#each toc as item (item.id)}
 							<a
 								href="#{item.id}"
 								class="block text-left text-sm py-1 border-l-2 transition-colors no-underline {activeId ===

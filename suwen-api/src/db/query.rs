@@ -3,9 +3,11 @@ use std::path::PathBuf;
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagWithCount};
 use crate::db::utils::sha256_hash;
-use crate::db::{ArticleForRSS, Lang};
-use anyhow::Result;
+use crate::db::{ArticleForRSS, Comment, Lang, get_metadata_id_for_slug};
+use crate::routes::IdentityInfo;
+use anyhow::{Result, bail, ensure};
 use chrono::Datelike;
+use dashmap::DashMap;
 use futures::TryStreamExt;
 use futures::stream::FuturesUnordered;
 use sea_orm::ActiveValue::Set;
@@ -95,12 +97,28 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         )
         .all_markdown_files()
         .await?;
+        // temp for rebuild database
+        let summary_cache: DashMap<String, Option<String>> = async {
+            let content =
+                tokio::fs::read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache")
+                    .await?;
+            let result = serde_json::from_str(&content)?;
+            Result::<_, anyhow::Error>::Ok(result)
+        }
+        .await
+        .ok()
+        .unwrap_or_default();
         let tasks = all_markdown_files
             .into_iter()
-            .map(|file| create_article(&txn, file, Lang::ZhCN))
+            .map(|file| create_article(&txn, file, Lang::ZhCN, &summary_cache))
             .collect::<FuturesUnordered<_>>();
         tasks.try_collect::<Vec<_>>().await?;
         txn.commit().await?;
+        tokio::fs::write(
+            "/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache",
+            serde_json::to_string(&summary_cache)?,
+        )
+        .await?;
     }
     Ok(())
 }
@@ -265,10 +283,12 @@ pub async fn get_article_by_slug(
     Ok(content_metadata::Entity::find()
         .select_only()
         .columns([
+            content_metadata::Column::Id,
             content_metadata::Column::Slug,
             content_metadata::Column::Tags,
             content_metadata::Column::ViewCount,
             content_metadata::Column::CommentCount,
+            content_metadata::Column::LikeCount,
             content_metadata::Column::PublishedAt,
         ])
         .column_as(content::Column::Title, "title")
@@ -289,16 +309,17 @@ pub async fn get_article_by_slug(
         .await?)
 }
 
-pub async fn increase_article_view_count(conn: &DatabaseConnection, slug: &str) -> Result<()> {
-    content_metadata::Entity::update_many()
+pub async fn increase_article_view_count(conn: &DatabaseConnection, slug: &str) -> Result<i32> {
+    let metadata = content_metadata::Entity::update_many()
         .filter(content_metadata::Column::Slug.eq(slug))
         .col_expr(
             content_metadata::Column::ViewCount,
             Expr::col(content_metadata::Column::ViewCount).add(1),
         )
-        .exec(conn)
+        .exec_with_returning(conn)
         .await?;
-    Ok(())
+    ensure!(metadata.len() == 1, "operation failed");
+    Ok(metadata[0].view_count)
 }
 
 pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWithCount>> {
@@ -393,6 +414,7 @@ pub async fn create_article(
     conn: &impl ConnectionTrait,
     markdown: Markdown,
     lang: Lang,
+    summary_cache: &DashMap<String, Option<String>>,
 ) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
     match markdown {
@@ -406,7 +428,13 @@ pub async fn create_article(
             updated_at,
             published_at,
         } => {
-            let summary = generate_article_summary(&content).await?;
+            let summary = if let Some(cache) = summary_cache.get(&format!("{}-{}", slug, lang)) {
+                cache.value().clone()
+            } else {
+                let summary = generate_article_summary(&content).await?;
+                summary_cache.insert(format!("{}-{}", slug, lang), summary.clone());
+                summary
+            };
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
                 content_type: Set("article".into()),
@@ -434,7 +462,7 @@ pub async fn create_article(
             })
             .exec(conn)
             .await?;
-            if tags.len() > 0 {
+            if !tags.is_empty() {
                 let tag_models = tags
                     .iter()
                     .map(|tag| tag::ActiveModel {
@@ -460,7 +488,6 @@ pub async fn create_article(
                     .map(|tag| content_metadata_tag::ActiveModel {
                         content_metadata_id: Set(result.last_insert_id),
                         tag_id: Set(tag.id),
-                        ..Default::default()
                     })
                     .collect::<Vec<_>>();
                 content_metadata_tag::Entity::insert_many(tag_associations)
@@ -504,4 +531,70 @@ pub async fn create_article(
         }
     };
     Ok(())
+}
+
+pub async fn get_comments_by_slug(conn: &DatabaseConnection, slug: &str) -> Result<Vec<Comment>> {
+    let metadata_id = get_metadata_id_for_slug(slug, conn).await?;
+    let parent_comments = comment::Entity::find()
+        .filter(
+            comment::Column::ContentMetadataId
+                .eq(metadata_id)
+                .and(comment::Column::ParentId.is_null()),
+        )
+        .order_by_desc(comment::Column::CreatedAt)
+        .all(conn)
+        .await?;
+    let child_comments = comment::Entity::find()
+        .filter(
+            comment::Column::ContentMetadataId
+                .eq(metadata_id)
+                .and(comment::Column::ParentId.is_not_null()),
+        )
+        .order_by_asc(comment::Column::CreatedAt)
+        .all(conn)
+        .await?;
+    let identity_ids = parent_comments
+        .iter()
+        .map(|c| c.identity_id)
+        .chain(child_comments.iter().map(|c| c.identity_id))
+        .collect::<Vec<_>>();
+    let identities = suwen_entity::identity::Entity::find()
+        .filter(suwen_entity::identity::Column::Id.is_in(identity_ids))
+        .find_also_related(suwen_entity::user::Entity)
+        .all(conn)
+        .await?;
+    let identity_map: HashMap<i32, IdentityInfo> = identities
+        .into_iter()
+        .map(|item| (item.0.id, item.into()))
+        .collect();
+    let comments: Result<Vec<Comment>> = parent_comments
+        .into_iter()
+        .map(|c| match identity_map.get(&c.identity_id) {
+            Some(identity) => Ok((identity.clone(), c).into()),
+            None => Err(anyhow::anyhow!("Identity not found for comment {}", c.id)),
+        })
+        .collect();
+    let mut comments = comments?;
+    let mut comment_map: HashMap<i32, &mut Comment> =
+        comments.iter_mut().map(|c| (c.id, c)).collect();
+    for reply in child_comments {
+        // safety: parent_id must exist in reply_comments
+        let parent_id = reply.parent_id.unwrap();
+        let Some(parent_comment) = comment_map.get_mut(&parent_id) else {
+            bail!(
+                "Parent {} comment not found for reply {}",
+                parent_id,
+                reply.id
+            );
+        };
+        match identity_map.get(&reply.identity_id) {
+            Some(identity) => parent_comment
+                .replies
+                .push((identity.clone(), reply).into()),
+            None => {
+                bail!("Identity not found for comment {}", reply.id);
+            }
+        }
+    }
+    Ok(comments)
 }
