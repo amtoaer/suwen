@@ -97,8 +97,8 @@ async fn serve() -> Result<()> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     tokio::spawn(async move {
         let _ = tx.send(axum::serve(listener, router).await);
-        info!("Server running on 0.0.0.0:3000");
     });
+    info!("Server running on 0.0.0.0:3000");
     tokio::select! {
         res = rx => {
             error!("Server terminated unexpectedly with result: {:?}", res);

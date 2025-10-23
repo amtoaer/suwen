@@ -41,32 +41,32 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
             related_links: Set(vec![
                 RelatedLink {
                     name: "GitHub".into(),
-                    icon: "https://icons.ly/github/_/fff".into(),
+                    icon: "https://cdn.simpleicons.org/github/_/fff".into(),
                     url: "https://github.com/amtoaer".into(),
                 },
                 RelatedLink {
                     name: "Telegram".into(),
-                    icon: "https://icons.ly/telegram".into(),
+                    icon: "https://cdn.simpleicons.org/telegram".into(),
                     url: "https://t.me/amtoaer".into(),
                 },
                 RelatedLink {
                     name: "GMail".into(),
-                    icon: "https://icons.ly/gmail/_/EA4335".into(),
+                    icon: "https://cdn.simpleicons.org/gmail/_/EA4335".into(),
                     url: "mailto:amtoaer@gmail.com".into(),
                 },
                 RelatedLink {
                     name: "X".into(),
-                    icon: "https://icons.ly/x/_/fff".into(),
+                    icon: "https://cdn.simpleicons.org/x/_/fff".into(),
                     url: "https://x.com/amtoaer".into(),
                 },
                 RelatedLink {
                     name: "Bilibili".into(),
-                    icon: "https://icons.ly/bilibili/_/00A1D6".into(),
+                    icon: "https://cdn.simpleicons.org/bilibili/_/00A1D6".into(),
                     url: "https://space.bilibili.com/9183758".into(),
                 },
                 RelatedLink {
                     name: "Steam".into(),
-                    icon: "https://icons.ly/steam/_/fff".into(),
+                    icon: "https://cdn.simpleicons.org/steam/_/fff".into(),
                     url: "https://steamcommunity.com/id/amtoaer".into(),
                 },
             ]
