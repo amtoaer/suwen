@@ -116,7 +116,11 @@ async fn init() -> Result<(redis::aio::ConnectionManager, db::DatabaseConnection
     tracing_subscriber::fmt::Subscriber::builder()
         .compact()
         .with_target(false)
-        .with_env_filter("None,suwen=INFO,suwen-api=INFO,suwen-markdown=INFO")
+        .with_env_filter(
+            "NONE,suwen=INFO,suwen-api=INFO,suwen-config=INFO,\
+            suwen-entity=INFO,suwen-llm=INFO,\
+            suwen-markdown=INFO,suwen-migration=INFO",
+        )
         .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
             "%b %d %H:%M:%S".to_owned(),
         ))

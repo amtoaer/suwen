@@ -22,16 +22,15 @@ RUN bun --bun run build && \
 
 FROM debian:trixie-slim
 WORKDIR /app
-RUN apt update && apt install -y multirun && \
-    apt clean && rm -rf /var/lib/apt/lists/*
+RUN wget -c https://github.com/nicolas-van/multirun/releases/download/1.1.3/multirun-x86_64-linux-gnu-1.1.3.tar.gz -O - | tar -xz && \
+    mv multirun /bin
 ENV LANG=zh_CN.UTF-8 \
     TZ=Asia/Shanghai \
     PORT=5173 \
     FRONTEND_PORT=5173 \
-    RUST_LOG=NONE,suwen=INFO,suwen-api=INFO \
     HOME=/app
 COPY --from=rust-builder /app/suwen-backend suwen-backend
 COPY --from=bun-builder /app/suwen-frontend  suwen-frontend
 RUN chmod -R 777 /app
 EXPOSE 3000
-CMD ["/usr/bin/multirun", "--", "/app/suwen-frontend", "/app/suwen-backend"]
+CMD ["/bin/multirun", "--", "/app/suwen-frontend", "/app/suwen-backend"]
