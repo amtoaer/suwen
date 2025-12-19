@@ -11,7 +11,6 @@ use tokio::{
     fs::{self, create_dir_all},
     task::JoinSet,
 };
-use two_face::theme::EmbeddedThemeName;
 
 mod xlog;
 
@@ -19,7 +18,8 @@ pub use xlog::import_file as XlogImporter;
 
 use crate::{highlighter::Highlighter, parse_markdown};
 
-static HIGHLIGHTER: LazyLock<Highlighter> = LazyLock::new(Highlighter::new);
+static HIGHLIGHTER: LazyLock<parking_lot::Mutex<Highlighter>> =
+    LazyLock::new(|| parking_lot::Mutex::new(Highlighter::new()));
 
 pub async fn import_path<T, F>(
     source: PathBuf,
@@ -261,8 +261,7 @@ impl Markdown {
             }
             _ => {}
         });
-        let highlighted_events =
-            HIGHLIGHTER.highlight(EmbeddedThemeName::Leet, events.into_iter())?;
+        let highlighted_events = HIGHLIGHTER.lock().highlight(events.into_iter())?;
         let mut buf = String::new();
         html::push_html(&mut buf, highlighted_events.into_iter());
         Ok((Some(toc.into()), Some(buf)))

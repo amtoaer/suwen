@@ -1,45 +1,33 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Tag, TagEnd};
 
-use two_face::{
-    re_exports::syntect::{html::highlighted_html_for_string, parsing::SyntaxSet},
-    syntax,
-    theme::{self, EmbeddedLazyThemeSet},
-};
-
 pub struct Highlighter {
-    syntax_set: SyntaxSet,
-    theme_set: EmbeddedLazyThemeSet,
+    highlighter: arborium::Highlighter,
 }
 
 impl Highlighter {
     pub fn new() -> Highlighter {
         Highlighter {
-            syntax_set: syntax::extra_newlines(),
-            theme_set: theme::extra(),
+            highlighter: arborium::Highlighter::new(),
         }
     }
 
-    pub fn highlight<'a, It>(
-        &self,
-        theme_name: two_face::theme::EmbeddedThemeName,
-        events: It,
-    ) -> Result<Vec<Event<'a>>>
+    pub fn highlight<'a, It>(&mut self, events: It) -> Result<Vec<Event<'a>>>
     where
         It: Iterator<Item = Event<'a>>,
     {
-        let fallback_syntax = self.syntax_set.find_syntax_plain_text();
+        let mut syntax = None;
         let mut in_code_block = false;
-        let mut syntax = fallback_syntax;
         let mut to_hightlight = String::new();
         events
             .filter_map(|e| match e {
                 Event::Start(Tag::CodeBlock(kind)) => {
                     if let CodeBlockKind::Fenced(lang) = kind {
-                        syntax = self
-                            .syntax_set
-                            .find_syntax_by_token(&lang)
-                            .unwrap_or(fallback_syntax);
+                        if self.highlighter.store().get(lang.as_ref()).is_some() {
+                            syntax = Some(lang.into_string());
+                        } else {
+                            syntax = None;
+                        }
                     }
                     in_code_block = true;
                     None
@@ -48,14 +36,11 @@ impl Highlighter {
                     if !in_code_block {
                         return Some(Err(anyhow!("Unmatched code block end event")));
                     }
-                    let html = highlighted_html_for_string(
-                        &to_hightlight,
-                        &self.syntax_set,
-                        syntax,
-                        self.theme_set.get(theme_name),
-                    )
-                    .map(|v| Event::Html(CowStr::from(v)))
-                    .map_err(|e| anyhow!("Highlighting error: {}", e));
+                    let html = self
+                        .highlighter
+                        .highlight(syntax.as_deref().unwrap_or("markdown"), &to_hightlight)
+                        .map(|v| Event::Html(CowStr::from(format!("<pre>{}</pre>", v))))
+                        .context("Failed to highlight code block");
                     to_hightlight.clear();
                     in_code_block = false;
                     Some(html)

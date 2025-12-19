@@ -85,6 +85,280 @@
 	--sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+a-at {
+	color: var(--arb-at-dark);
+	font-weight: var(--arb-at-dark-weight, normal);
+	font-style: var(--arb-at-dark-style, normal);
+	text-decoration: var(--arb-at-dark-decoration, none);
+}
+a-co {
+	color: var(--arb-co-dark);
+	font-weight: var(--arb-co-dark-weight, normal);
+	font-style: var(--arb-co-dark-style, normal);
+	text-decoration: var(--arb-co-dark-decoration, none);
+}
+a-cr {
+	color: var(--arb-cr-dark);
+	font-weight: var(--arb-cr-dark-weight, normal);
+	font-style: var(--arb-cr-dark-style, normal);
+	text-decoration: var(--arb-cr-dark-decoration, none);
+}
+a-fb {
+	color: var(--arb-fb-dark);
+	font-weight: var(--arb-fb-dark-weight, normal);
+	font-style: var(--arb-fb-dark-style, normal);
+	text-decoration: var(--arb-fb-dark-decoration, none);
+}
+a-f {
+	color: var(--arb-f-dark);
+	font-weight: var(--arb-f-dark-weight, normal);
+	font-style: var(--arb-f-dark-style, normal);
+	text-decoration: var(--arb-f-dark-decoration, none);
+}
+a-k {
+	color: var(--arb-k-dark);
+	font-weight: var(--arb-k-dark-weight, normal);
+	font-style: var(--arb-k-dark-style, normal);
+	text-decoration: var(--arb-k-dark-decoration, none);
+}
+a-o {
+	color: var(--arb-o-dark);
+	font-weight: var(--arb-o-dark-weight, normal);
+	font-style: var(--arb-o-dark-style, normal);
+	text-decoration: var(--arb-o-dark-decoration, none);
+}
+a-pr {
+	color: var(--arb-pr-dark);
+	font-weight: var(--arb-pr-dark-weight, normal);
+	font-style: var(--arb-pr-dark-style, normal);
+	text-decoration: var(--arb-pr-dark-decoration, none);
+}
+a-p {
+	color: var(--arb-p-dark);
+	font-weight: var(--arb-p-dark-weight, normal);
+	font-style: var(--arb-p-dark-style, normal);
+	text-decoration: var(--arb-p-dark-decoration, none);
+}
+a-s {
+	color: var(--arb-s-dark);
+	font-weight: var(--arb-s-dark-weight, normal);
+	font-style: var(--arb-s-dark-style, normal);
+	text-decoration: var(--arb-s-dark-decoration, none);
+}
+a-tg {
+	color: var(--arb-tg-dark);
+	font-weight: var(--arb-tg-dark-weight, normal);
+	font-style: var(--arb-tg-dark-style, normal);
+	text-decoration: var(--arb-tg-dark-decoration, none);
+}
+a-err {
+	color: var(--arb-err-dark);
+	font-weight: var(--arb-err-dark-weight, normal);
+	font-style: var(--arb-err-dark-style, normal);
+	text-decoration: var(--arb-err-dark-decoration, none);
+}
+a-t {
+	color: var(--arb-t-dark);
+	font-weight: var(--arb-t-dark-weight, normal);
+	font-style: var(--arb-t-dark-style, normal);
+	text-decoration: var(--arb-t-dark-decoration, none);
+}
+a-v {
+	color: var(--arb-v-dark);
+	font-weight: var(--arb-v-dark-weight, normal);
+	font-style: var(--arb-v-dark-style, normal);
+	text-decoration: var(--arb-v-dark-decoration, none);
+}
+a-c {
+	color: var(--arb-c-dark);
+	font-weight: var(--arb-c-dark-weight, normal);
+	font-style: var(--arb-c-dark-style, normal);
+	text-decoration: var(--arb-c-dark-decoration, none);
+}
+a-m {
+	color: var(--arb-m-dark);
+	font-weight: var(--arb-m-dark-weight, normal);
+	font-style: var(--arb-m-dark-style, normal);
+	text-decoration: var(--arb-m-dark-decoration, none);
+}
+a-l {
+	color: var(--arb-l-dark);
+	font-weight: var(--arb-l-dark-weight, normal);
+	font-style: var(--arb-l-dark-style, normal);
+	text-decoration: var(--arb-l-dark-decoration, none);
+}
+a-da {
+	color: var(--arb-da-dark);
+	font-weight: var(--arb-da-dark-weight, normal);
+	font-style: var(--arb-da-dark-style, normal);
+	text-decoration: var(--arb-da-dark-decoration, none);
+}
+a-dd {
+	color: var(--arb-dd-dark);
+	font-weight: var(--arb-dd-dark-weight, normal);
+	font-style: var(--arb-dd-dark-style, normal);
+	text-decoration: var(--arb-dd-dark-decoration, none);
+}
+a-n {
+	color: var(--arb-n-dark);
+	font-weight: var(--arb-n-dark-weight, normal);
+	font-style: var(--arb-n-dark-style, normal);
+	text-decoration: var(--arb-n-dark-decoration, none);
+}
+a-tl {
+	color: var(--arb-tl-dark);
+	font-weight: var(--arb-tl-dark-weight, normal);
+	font-style: var(--arb-tl-dark-style, normal);
+	text-decoration: var(--arb-tl-dark-decoration, none);
+}
+a-em {
+	color: var(--arb-em-dark);
+	font-weight: var(--arb-em-dark-weight, normal);
+	font-style: var(--arb-em-dark-style, normal);
+	text-decoration: var(--arb-em-dark-decoration, none);
+}
+a-st {
+	color: var(--arb-st-dark);
+	font-weight: var(--arb-st-dark-weight, normal);
+	font-style: var(--arb-st-dark-style, normal);
+	text-decoration: var(--arb-st-dark-decoration, none);
+}
+a-tu {
+	color: var(--arb-tu-dark);
+	font-weight: var(--arb-tu-dark-weight, normal);
+	font-style: var(--arb-tu-dark-style, normal);
+	text-decoration: var(--arb-tu-dark-decoration, none);
+}
+a-tr {
+	color: var(--arb-tr-dark);
+	font-weight: var(--arb-tr-dark-weight, normal);
+	font-style: var(--arb-tr-dark-style, normal);
+	text-decoration: var(--arb-tr-dark-decoration, none);
+}
+a-se {
+	color: var(--arb-se-dark);
+	font-weight: var(--arb-se-dark-weight, normal);
+	font-style: var(--arb-se-dark-style, normal);
+	text-decoration: var(--arb-se-dark-decoration, none);
+}
+a-tt {
+	color: var(--arb-tt-dark);
+	font-weight: var(--arb-tt-dark-weight, normal);
+	font-style: var(--arb-tt-dark-style, normal);
+	text-decoration: var(--arb-tt-dark-decoration, none);
+}
+a-ts {
+	color: var(--arb-ts-dark);
+	font-weight: var(--arb-ts-dark-weight, normal);
+	font-style: var(--arb-ts-dark-style, normal);
+	text-decoration: var(--arb-ts-dark-decoration, none);
+}
+a-eb {
+	color: var(--arb-eb-dark);
+	font-weight: var(--arb-eb-dark-weight, normal);
+	font-style: var(--arb-eb-dark-style, normal);
+	text-decoration: var(--arb-eb-dark-decoration, none);
+}
+a-ns {
+	color: var(--arb-ns-dark);
+	font-weight: var(--arb-ns-dark-weight, normal);
+	font-style: var(--arb-ns-dark-style, normal);
+	text-decoration: var(--arb-ns-dark-decoration, none);
+}
+a-pp {
+	color: var(--arb-pp-dark);
+	font-weight: var(--arb-pp-dark-weight, normal);
+	font-style: var(--arb-pp-dark-style, normal);
+	text-decoration: var(--arb-pp-dark-decoration, none);
+}
+a-ch {
+	color: var(--arb-ch-dark);
+	font-weight: var(--arb-ch-dark-weight, normal);
+	font-style: var(--arb-ch-dark-style, normal);
+	text-decoration: var(--arb-ch-dark-decoration, none);
+}
+a-sr {
+	color: var(--arb-sr-dark);
+	font-weight: var(--arb-sr-dark-weight, normal);
+	font-style: var(--arb-sr-dark-style, normal);
+	text-decoration: var(--arb-sr-dark-decoration, none);
+}
+a-bo {
+	color: var(--arb-bo-dark);
+	font-weight: var(--arb-bo-dark-weight, normal);
+	font-style: var(--arb-bo-dark-style, normal);
+	text-decoration: var(--arb-bo-dark-decoration, none);
+}
+
+:root {
+	--arb-co-dark: #d2a6ff;
+	--arb-co-dark: #d2a6ff;
+	--arb-fb-dark: #ffb454;
+	--arb-f-dark: #ffb454;
+	--arb-f-dark: #ffb454;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-o-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-o-dark: #f29668;
+	--arb-pr-dark: #59c2ff;
+	--arb-p-dark: #e6b673;
+	--arb-p-dark: #e6b673;
+	--arb-p-dark: #e6b673;
+	--arb-s-dark: #aad94c;
+	--arb-s-dark: #95e6cb;
+	--arb-tg-dark: #39bae6;
+	--arb-tg-dark: #39bae6;
+	--arb-err-dark: #39bae6;
+	--arb-t-dark: #59c2ff;
+	--arb-t-dark: #59c2ff;
+	--arb-t-dark: #59c2ff;
+	--arb-v-dark: #bfbdb6;
+	--arb-v-dark: #ff8f40;
+	--arb-v-dark: #bfbdb6;
+	--arb-c-dark: #626a73;
+	--arb-c-dark-style: italic;
+	--arb-c-dark: #626a73;
+	--arb-c-dark-style: italic;
+	--arb-m-dark: #ffb454;
+	--arb-l-dark: #39bae6;
+	--arb-da-dark: #aad94c;
+	--arb-dd-dark: #d95757;
+	--arb-n-dark: #d2a6ff;
+	--arb-tl-dark: #bfbdb6;
+	--arb-em-dark-style: italic;
+	--arb-st-dark-weight: bold;
+	--arb-tu-dark: #39bae6;
+	--arb-tu-dark-decoration: underline;
+	--arb-tr-dark: #59c2ff;
+	--arb-se-dark: #95e6cb;
+	--arb-tt-dark: #59c2ff;
+	--arb-tt-dark-weight: bold;
+	--arb-ts-dark-decoration: line-through;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-ch-dark: #95e6cb;
+	--arb-pr-dark: #bfbdb6;
+	--arb-f-dark: #ffb454;
+	--arb-t-dark: #59c2ff;
+	--arb-f-dark: #ffb454;
+	--arb-k-dark: #ff8f40;
+	--arb-k-dark: #ff8f40;
+	--arb-sr-dark: #95e6cb;
+	--arb-n-dark: #d2a6ff;
+	--arb-bo-dark: #d2a6ff;
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
