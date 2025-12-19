@@ -8,12 +8,14 @@ publish = { workspace = true }
 suwen_entity = { workspace = true }
 
 anyhow = { workspace = true }
+arborium = { workspace = true }
 autocorrect = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
 lol_html = { workspace = true }
 mime2ext = { workspace = true }
+parking_lot = { workspace = true }
 pathdiff = { workspace = true }
 pulldown-cmark = { workspace = true }
 pulldown-cmark-to-cmark = { workspace = true }
@@ -25,5 +27,4 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
-two-face = { workspace = true }
 yaml-rust2 = { workspace = true }
