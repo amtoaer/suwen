@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use suwen_api::db::{self, update_articles};
 use suwen_config::CONFIG;
 use suwen_markdown::manager::{MarkdownManager, importer::XlogImporter};
+use tokio::signal;
 use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Parser)]
@@ -107,11 +108,16 @@ async fn serve() -> Result<()> {
         let _ = tx.send(axum::serve(listener, router).await);
     });
     info!("Server running on 0.0.0.0:3000");
+    let mut term = signal::unix::signal(signal::unix::SignalKind::terminate())?;
+    let mut int = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
     tokio::select! {
         res = rx => {
             error!("Server terminated unexpectedly with result: {:?}", res);
         }
-        _ = tokio::signal::ctrl_c() => {
+        _ = term.recv() => {
+            info!("Shutting down server...");
+        }
+        _ = int.recv() => {
             info!("Shutting down server...");
         }
     };
