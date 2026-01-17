@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 	import { Bell, CirclePlus, ChevronDown } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import FallbackAvatar from './fallbackAvatar.svelte';
@@ -50,9 +49,6 @@
 			<span>
 				该博客系统正在开发中，开发进度见
 				<a href="https://github.com/amtoaer/suwen" class="text-red-500 hover:underline">GitHub</a>。
-				<br class="block sm:hidden" />
-				可前往
-				<a href="https://blog.allwens.work/" class="text-red-500 hover:underline">xLog 页</a> 以获得更好体验。
 			</span>
 		</div>
 	</div>
