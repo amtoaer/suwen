@@ -4672,6 +4672,7 @@ dependencies = [
  "dirs",
  "futures",
  "jsonwebtoken",
+ "quick-xml",
  "redis",
  "reqwest",
  "rss",

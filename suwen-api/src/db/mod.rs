@@ -65,6 +65,7 @@ pub async fn database_connection() -> Result<DatabaseConnection> {
     ))
 }
 
+#[derive(Clone, Copy)]
 pub enum Lang {
     ZhCN,
     EnUS,

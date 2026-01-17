@@ -20,6 +20,8 @@ pub struct Config {
     pub jwt_secret: String,
     pub openai_api_key: String,
     pub redis_url: String,
+    #[serde(default)]
+    pub host_url: Option<String>,
 }
 
 impl Default for Config {
@@ -28,6 +30,7 @@ impl Default for Config {
             jwt_secret: random_string(32),
             openai_api_key: String::new(),
             redis_url: "redis://127.0.0.1/".to_owned(),
+            host_url: None,
         }
     }
 }

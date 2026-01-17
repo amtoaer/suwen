@@ -109,3 +109,9 @@ impl From<(IdentityInfo, suwen_entity::comment::Model)> for Comment {
         }
     }
 }
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct SitemapUrl {
+    pub slug: String,
+    pub updated_at: DateTime<Local>,
+}

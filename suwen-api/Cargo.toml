@@ -21,6 +21,7 @@ dashmap = { workspace = true }
 dirs = { workspace = true }
 futures = { workspace = true }
 jsonwebtoken = { workspace = true }
+quick-xml = { workspace = true }
 redis = { workspace = true }
 reqwest = { workspace = true }
 rss = { workspace = true }

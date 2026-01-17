@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, TagWithCount};
+use crate::db::schema::{
+    Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount,
+};
 use crate::db::utils::sha256_hash;
 use crate::db::{ArticleForRSS, Comment, Lang, get_metadata_id_for_slug};
 use crate::routes::IdentityInfo;
@@ -597,4 +599,27 @@ pub async fn get_comments_by_slug(conn: &DatabaseConnection, slug: &str) -> Resu
         }
     }
     Ok(comments)
+}
+
+pub async fn get_sitemap_articles(
+    conn: &DatabaseConnection,
+    lang: Lang,
+) -> Result<Vec<SitemapUrl>> {
+    Ok(content_metadata::Entity::find()
+        .select_only()
+        .columns([
+            content_metadata::Column::Slug,
+            content_metadata::Column::UpdatedAt,
+        ])
+        .inner_join(content::Entity)
+        .filter(
+            content::Column::LangCode
+                .eq(lang.to_string())
+                .and(content_metadata::Column::ContentType.eq("article"))
+                .and(content_metadata::Column::PublishedAt.is_not_null()),
+        )
+        .order_by_desc(content_metadata::Column::UpdatedAt)
+        .into_model::<SitemapUrl>()
+        .all(conn)
+        .await?)
 }
