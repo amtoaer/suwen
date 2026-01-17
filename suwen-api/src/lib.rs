@@ -32,7 +32,7 @@ pub fn router() -> Router {
         .nest("/api", routes::router())
         .route("/uploads/{file}", get(uploads_handler))
         .route("/feed", get(rss_handler))
-        .route("/sitemap", get(sitemap_handler))
+        .route("/sitemap.xml", get(sitemap_handler))
         .merge(ReverseProxy::new(
             "/",
             &format!("http://localhost:{}", FRONTEND_PORT.as_str()),
