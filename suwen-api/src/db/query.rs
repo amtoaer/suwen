@@ -13,7 +13,7 @@ use dashmap::DashMap;
 use futures::TryStreamExt;
 use futures::stream::FuturesUnordered;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ColumnTrait, ConnectionTrait, JoinType, TransactionTrait};
+use sea_orm::{ColumnTrait, ConnectionTrait, JoinType, QueryTrait, TransactionTrait};
 use sea_orm::{
     DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
 };
@@ -122,6 +122,23 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         )
         .await?;
     }
+    Ok(())
+}
+
+pub async fn update_articles(conn: &DatabaseConnection) -> Result<()> {
+    let all_markdown_files = MarkdownManager::new(
+        PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
+        None,
+    )
+    .all_markdown_files()
+    .await?;
+    let txn = conn.begin().await?;
+    let tasks = all_markdown_files
+        .into_iter()
+        .map(|file| update_article(&txn, file, Lang::ZhCN))
+        .collect::<FuturesUnordered<_>>();
+    tasks.try_collect::<Vec<_>>().await?;
+    txn.commit().await?;
     Ok(())
 }
 
@@ -530,6 +547,65 @@ pub async fn create_article(
             })
             .exec(conn)
             .await?;
+        }
+    };
+    Ok(())
+}
+
+pub async fn update_article(
+    conn: &impl ConnectionTrait,
+    markdown: Markdown,
+    lang: Lang,
+) -> Result<()> {
+    let (toc, rendered_html) = markdown.render_to_html()?;
+    match markdown {
+        Markdown::Article {
+            slug,
+            title,
+            content,
+            ..
+        } => {
+            content::Entity::update_many()
+                .filter(
+                    content::Column::LangCode.eq(lang.to_string()).and(
+                        content::Column::ContentMetadataId.in_subquery(
+                            content_metadata::Entity::find()
+                                .select_only()
+                                .column(content_metadata::Column::Id)
+                                .filter(content_metadata::Column::Slug.eq(&slug))
+                                .into_query(),
+                        ),
+                    ),
+                )
+                .col_expr(content::Column::Title, Expr::value(title))
+                .col_expr(content::Column::OriginalText, Expr::value(content))
+                .col_expr(content::Column::RenderedHtml, Expr::value(rendered_html))
+                .col_expr(content::Column::Toc, Expr::value(toc))
+                .exec(conn)
+                .await?;
+        }
+        Markdown::Short {
+            slug,
+            title,
+            content,
+            ..
+        } => {
+            content::Entity::update_many()
+                .filter(
+                    content::Column::LangCode.eq(lang.to_string()).and(
+                        content::Column::ContentMetadataId.in_subquery(
+                            content_metadata::Entity::find()
+                                .select_only()
+                                .column(content_metadata::Column::Id)
+                                .filter(content_metadata::Column::Slug.eq(&slug))
+                                .into_query(),
+                        ),
+                    ),
+                )
+                .col_expr(content::Column::Title, Expr::value(title))
+                .col_expr(content::Column::OriginalText, Expr::value(content))
+                .exec(conn)
+                .await?;
         }
     };
     Ok(())

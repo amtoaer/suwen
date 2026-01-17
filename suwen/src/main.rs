@@ -5,7 +5,7 @@ use anyhow::Result;
 use axum::Extension;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use suwen_api::db;
+use suwen_api::db::{self, update_articles};
 use suwen_config::CONFIG;
 use suwen_markdown::manager::{MarkdownManager, importer::XlogImporter};
 use tracing_subscriber::util::SubscriberInitExt;
@@ -21,6 +21,8 @@ struct Cli {
 enum Commands {
     /// Start the server
     Serve,
+    /// Update article content from markdown files
+    UpdateArticle,
     /// Import content from xlog platform
     ImportXlog {
         /// Source path
@@ -68,6 +70,12 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Some(Commands::Serve) | None => serve().await,
+        Some(Commands::UpdateArticle) => {
+            let (_redis_connection, sqlite_connection) = init().await?;
+            update_articles(&sqlite_connection).await?;
+            let _ = sqlite_connection.close().await;
+            Ok(())
+        }
         Some(Commands::ImportXlog {
             source,
             output,
