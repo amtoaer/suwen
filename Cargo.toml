@@ -79,9 +79,6 @@ tokio-stream = "0.1.17"
 tokio-util = { version = "0.7.16", features = ["io", "rt"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = [
-    "compression-zstd",
-    "compression-gzip",
-    "compression-br",
     "fs",
 ] }
 tracing = "0.1.41"

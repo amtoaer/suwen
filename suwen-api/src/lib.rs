@@ -13,7 +13,7 @@ use tower::ServiceExt;
 use axum::extract::{Path as AxumPath, Query};
 use axum::{Router, extract::Request, response::IntoResponse, routing::get};
 use axum_reverse_proxy::ReverseProxy;
-use tower_http::{compression::CompressionLayer, services::ServeFile};
+use tower_http::services::ServeFile;
 
 use crate::routes::UrlQuery;
 
@@ -37,7 +37,6 @@ pub fn router() -> Router {
             "/",
             &format!("http://localhost:{}", FRONTEND_PORT.as_str()),
         ))
-        .layer(CompressionLayer::new().gzip(true).br(true).zstd(true))
 }
 
 async fn uploads_handler(AxumPath(path): AxumPath<String>, request: Request) -> impl IntoResponse {
