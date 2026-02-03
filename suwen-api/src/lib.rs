@@ -24,8 +24,9 @@ mod rss;
 mod sitemap;
 mod wrapper;
 
-static FRONTEND_PORT: LazyLock<String> =
-    LazyLock::new(|| std::env::var("FRONTEND_PORT").unwrap_or_else(|_| "4173".to_string()));
+static FRONTEND_ORIGIN: LazyLock<String> = LazyLock::new(|| {
+    std::env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5545".to_string())
+});
 
 pub fn router() -> Router {
     Router::new()
@@ -33,10 +34,7 @@ pub fn router() -> Router {
         .route("/uploads/{file}", get(uploads_handler))
         .route("/feed", get(rss_handler))
         .route("/sitemap.xml", get(sitemap_handler))
-        .merge(ReverseProxy::new(
-            "/",
-            &format!("http://localhost:{}", FRONTEND_PORT.as_str()),
-        ))
+        .merge(ReverseProxy::new("/", FRONTEND_ORIGIN.as_str()))
 }
 
 async fn uploads_handler(AxumPath(path): AxumPath<String>, request: Request) -> impl IntoResponse {

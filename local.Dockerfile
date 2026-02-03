@@ -27,13 +27,14 @@ RUN apt update && apt install -y wget && \
     apt remove -y wget && apt autoremove -y && apt clean && rm -rf /var/lib/apt/lists/*
 ENV LANG=zh_CN.UTF-8 \
     TZ=Asia/Shanghai \
-    PORT=5173 \
-    FRONTEND_PORT=5173 \
+    ORIGIN=http://localhost:4545 \
+    FRONTEND_ORIGIN=http://localhost:5545 \
+    PORT=5545 \
+    BACKEND_PORT=4545 \
     HOME=/app
 COPY --from=rust-builder /app/suwen-backend suwen-backend
 COPY --from=bun-builder /app/build  suwen-frontend
 COPY --from=bun-builder /usr/local/bin/bun bun
 RUN chmod -R 777 /app
-EXPOSE 3000
+EXPOSE 4545
 CMD ["/usr/bin/multirun", "--", "/app/bun /app/suwen-frontend/index.js", "/app/suwen-backend"]
-

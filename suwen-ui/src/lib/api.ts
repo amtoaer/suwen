@@ -1,5 +1,4 @@
 import type { ApiResponse } from './type';
-import { browser } from '$app/environment';
 
 export async function rawRequest(
 	fetch: typeof window.fetch,
@@ -12,9 +11,6 @@ export async function rawRequest(
 		[key: string]: unknown;
 	}
 ): Promise<Response> {
-	if (!browser && !url.startsWith('http')) {
-		url = `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
-	}
 	let requestUrl = url;
 	const requestOptions: RequestInit = {
 		method: options?.method || 'GET',

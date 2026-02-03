@@ -4,12 +4,15 @@ extern crate tracing;
 use anyhow::Result;
 use axum::Extension;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
 use suwen_api::db::{self, update_articles};
 use suwen_config::CONFIG;
 use suwen_markdown::manager::{MarkdownManager, importer::XlogImporter};
 use tokio::signal;
 use tracing_subscriber::util::SubscriberInitExt;
+
+static BACKEND_PORT: LazyLock<String> =
+    LazyLock::new(|| std::env::var("BACKEND_PORT").unwrap_or_else(|_| "4545".to_string()));
 
 #[derive(Parser)]
 #[command(name = "suwen", about = "Suwen - A modern blogging platform", version)]
@@ -101,13 +104,14 @@ async fn serve() -> Result<()> {
     let router = suwen_api::router()
         .layer(Extension(sqlite_connection.clone()))
         .layer(Extension(redis_connection));
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    let bind_address = format!("0.0.0.0:{}", BACKEND_PORT.as_str());
+    let listener = tokio::net::TcpListener::bind(&bind_address).await?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
     tokio::spawn(async move {
         let _ = tx.send(axum::serve(listener, router).await);
     });
-    info!("Server running on 0.0.0.0:3000");
+    info!("Server running on {}", bind_address);
     let mut term = signal::unix::signal(signal::unix::SignalKind::terminate())?;
     let mut int = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
     tokio::select! {
