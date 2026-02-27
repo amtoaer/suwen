@@ -26,7 +26,6 @@ use crate::parse_markdown;
 
 pub async fn import_file(file: PathBuf, output: PathBuf, obj_output: PathBuf) -> Result<super::Markdown> {
     let mut content = read_content(&file).await?;
-    format_content(&mut content);
     let content_type = extract_type(&content);
     if content_type.is_none_or(|t| t != "post" && t != "short") {
         error!("Unsupported content type in file: {}", file.display());
@@ -150,11 +149,6 @@ async fn read_content(source: &Path) -> Result<Content> {
 
 fn extract_type(content: &Content) -> Option<&str> {
     content.metadata.content.tags.first().map(|s| s.as_str())
-}
-
-fn format_content(content: &mut Content) {
-    content.metadata.content.title = autocorrect::format_for(&content.metadata.content.title, "markdown").out;
-    content.metadata.content.content = autocorrect::format_for(&content.metadata.content.content, "markdown").out;
 }
 
 fn extract_slug(content: &Content) -> Result<String> {
