@@ -1,6 +1,6 @@
 mod schema;
 
-use anyhow::{Error, ensure};
+use anyhow::Error;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -36,61 +36,40 @@ pub async fn import_file(
     let mut content = read_content(&file).await?;
     format_content(&mut content);
     let content_type = extract_type(&content);
-    ensure!(
-        content_type.is_some_and(|s| s == "post" || s == "short"),
-        "Unsupported content type in file: {}",
-        file.display()
-    );
+    if content_type.is_none_or(|t| t != "post" && t != "short") {
+        error!("Unsupported content type in file: {}", file.display());
+    }
     let slug = extract_slug(&content)?;
-    let cover_images = init_cover_images(&content, &slug, &output, &obj_output).await;
     match content_type {
-        Some("short") => handle_short(content, slug, cover_images),
-        Some("post") => handle_post(content, slug, cover_images, &output, &obj_output).await,
+        Some("short") => handle_short(content, slug, &output, &obj_output).await,
+        Some("post") => handle_post(content, slug, &output, &obj_output).await,
         _ => unreachable!(),
     }
 }
 
-async fn read_content(source: &Path) -> Result<Content> {
-    if source.extension().is_none_or(|ext| ext != "json") {
-        bail!("Unsupported file type: {}", source.display());
-    }
-    let json = read_to_string(&source).await?;
-    serde_json::from_str::<Content>(&json).context("Failed to parse JSON content")
-}
+async fn handle_short(
+    content: Content,
+    slug: String,
+    output: &Path,
+    obj_output: &Path,
+) -> Result<Markdown> {
+    let cover_images = init_cover_images(&content, &slug, output, obj_output).await;
 
-fn extract_type(content: &Content) -> Option<&str> {
-    content.metadata.content.tags.first().map(|s| s.as_str())
-}
-
-fn format_content(content: &mut Content) {
-    content.metadata.content.title =
-        autocorrect::format_for(&content.metadata.content.title, "markdown").out;
-    content.metadata.content.content =
-        autocorrect::format_for(&content.metadata.content.content, "markdown").out;
-}
-
-fn extract_slug(content: &Content) -> Result<String> {
-    content
-        .metadata
-        .content
-        .attributes
+    let images_markdown = cover_images
         .iter()
-        .find_map(|attr| {
-            if attr.trait_type == "xlog_slug" {
-                attr.value.as_str().map(String::from)
-            } else {
-                None
-            }
-        })
-        .context("Slug not found")
-}
+        .map(|img| format!("![cover]({})\n", img))
+        .collect::<String>();
 
-fn handle_short(content: Content, slug: String, cover_images: Vec<String>) -> Result<Markdown> {
+    let full_content = if images_markdown.is_empty() {
+        content.metadata.content.content
+    } else {
+        format!("{}\n{}", images_markdown, content.metadata.content.content)
+    };
+
     Ok(Markdown::Short {
         slug,
         title: content.metadata.content.title,
-        cover_images,
-        content: content.metadata.content.content,
+        content: full_content,
         created_at: content.created_at,
         updated_at: content.updated_at,
         published_at: content.published_at,
@@ -100,7 +79,6 @@ fn handle_short(content: Content, slug: String, cover_images: Vec<String>) -> Re
 async fn handle_post(
     content: Content,
     slug: String,
-    mut cover_images: Vec<String>,
     output: &Path,
     obj_output: &Path,
 ) -> Result<Markdown> {
@@ -136,7 +114,6 @@ async fn handle_post(
             Event::Start(Tag::Image { dest_url, .. }) => {
                 if let Some(new_url) = url_map.get(dest_url.as_ref()) {
                     *dest_url = new_url.clone().into();
-                    cover_images.push(new_url.to_string());
                     filtered_events.push(event);
                 }
             }
@@ -176,13 +153,47 @@ async fn handle_post(
     Ok(Markdown::Article {
         slug,
         title: content.metadata.content.title,
-        cover_images,
         content: buf,
         tags: content.metadata.content.tags.into_iter().skip(1).collect(),
         created_at: content.created_at,
         updated_at: content.updated_at,
         published_at: content.published_at,
     })
+}
+
+async fn read_content(source: &Path) -> Result<Content> {
+    if source.extension().is_none_or(|ext| ext != "json") {
+        bail!("Unsupported file type: {}", source.display());
+    }
+    let json = read_to_string(&source).await?;
+    serde_json::from_str::<Content>(&json).context("Failed to parse JSON content")
+}
+
+fn extract_type(content: &Content) -> Option<&str> {
+    content.metadata.content.tags.first().map(|s| s.as_str())
+}
+
+fn format_content(content: &mut Content) {
+    content.metadata.content.title =
+        autocorrect::format_for(&content.metadata.content.title, "markdown").out;
+    content.metadata.content.content =
+        autocorrect::format_for(&content.metadata.content.content, "markdown").out;
+}
+
+fn extract_slug(content: &Content) -> Result<String> {
+    content
+        .metadata
+        .content
+        .attributes
+        .iter()
+        .find_map(|attr| {
+            if attr.trait_type == "xlog_slug" {
+                attr.value.as_str().map(String::from)
+            } else {
+                None
+            }
+        })
+        .context("Slug not found")
 }
 
 async fn init_cover_images(

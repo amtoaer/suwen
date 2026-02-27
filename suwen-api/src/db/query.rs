@@ -19,8 +19,8 @@ use sea_orm::{
 };
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
+use suwen_markdown::manager::Markdown;
 use suwen_markdown::manager::MarkdownManager;
-use suwen_markdown::manager::importer::Markdown;
 use suwen_migration::{Expr, OnConflict};
 
 pub async fn init(conn: &DatabaseConnection) -> Result<()> {
@@ -436,11 +436,11 @@ pub async fn create_article(
     summary_cache: &DashMap<String, Option<String>>,
 ) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
+    let cover_images = markdown.extract_images()?;
     match markdown {
         Markdown::Article {
             slug,
             title,
-            cover_images,
             tags,
             content,
             created_at,
@@ -517,7 +517,6 @@ pub async fn create_article(
         Markdown::Short {
             slug,
             title,
-            cover_images,
             content,
             created_at,
             updated_at,

@@ -6,13 +6,15 @@ use std::{
     sync::Arc,
 };
 
-use crate::manager::importer::Markdown;
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use futures::{StreamExt, TryStreamExt, future::ready, stream::FuturesUnordered};
 use pathdiff::diff_paths;
 use tokio::{process::Command, sync::Semaphore};
 
+pub use markdown::Markdown;
+
 pub mod importer;
+mod markdown;
 
 pub struct MarkdownManager {
     output: PathBuf,
