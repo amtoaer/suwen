@@ -1,38 +1,30 @@
 mod schema;
 
-use anyhow::Error;
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::{Arc, LazyLock},
-};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
 
-use crate::{
-    manager::importer::{Markdown, xlog::schema::Content},
-    parse_markdown,
-};
-use anyhow::{Context, Result, bail};
-use futures::{StreamExt, TryStreamExt, stream::FuturesUnordered};
+use anyhow::{Context, Error, Result, bail};
+use futures::stream::FuturesUnordered;
+use futures::{StreamExt, TryStreamExt};
 use lol_html::{HtmlRewriter, Settings, element};
 use mime2ext::mime2ext;
 use pathdiff::diff_paths;
 use pulldown_cmark::{Event, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
 use regex::{Captures, Regex};
-use tokio::{
-    fs::{File, read_to_string},
-    io,
-    sync::Semaphore,
-};
+use tokio::fs::{File, read_to_string};
+use tokio::io;
+use tokio::sync::Semaphore;
 use tokio_util::io::StreamReader;
 use yaml_rust2::YamlLoader;
 
-pub async fn import_file(
-    file: PathBuf,
-    output: PathBuf,
-    obj_output: PathBuf,
-) -> Result<super::Markdown> {
+use crate::manager::importer::Markdown;
+use crate::manager::importer::xlog::schema::Content;
+use crate::parse_markdown;
+
+pub async fn import_file(file: PathBuf, output: PathBuf, obj_output: PathBuf) -> Result<super::Markdown> {
     let mut content = read_content(&file).await?;
     format_content(&mut content);
     let content_type = extract_type(&content);
@@ -47,12 +39,7 @@ pub async fn import_file(
     }
 }
 
-async fn handle_short(
-    content: Content,
-    slug: String,
-    output: &Path,
-    obj_output: &Path,
-) -> Result<Markdown> {
+async fn handle_short(content: Content, slug: String, output: &Path, obj_output: &Path) -> Result<Markdown> {
     let cover_images = init_cover_images(&content, &slug, output, obj_output).await;
 
     let images_markdown = cover_images
@@ -76,12 +63,7 @@ async fn handle_short(
     })
 }
 
-async fn handle_post(
-    content: Content,
-    slug: String,
-    output: &Path,
-    obj_output: &Path,
-) -> Result<Markdown> {
+async fn handle_post(content: Content, slug: String, output: &Path, obj_output: &Path) -> Result<Markdown> {
     let parts: Vec<&str> = content.metadata.content.content.splitn(3, "---").collect();
     let content_text = if parts.len() == 3 && YamlLoader::load_from_str(parts[1]).is_ok() {
         Cow::Owned(String::from(parts[0]) + parts[2])
@@ -103,10 +85,7 @@ async fn handle_post(
         output,
     )
     .await;
-    let url_map = results
-        .into_iter()
-        .filter_map(Result::ok)
-        .collect::<HashMap<_, _>>();
+    let url_map = results.into_iter().filter_map(Result::ok).collect::<HashMap<_, _>>();
     let mut video_idx = 0;
     let mut filtered_events = Vec::new();
     for mut event in events {
@@ -174,10 +153,8 @@ fn extract_type(content: &Content) -> Option<&str> {
 }
 
 fn format_content(content: &mut Content) {
-    content.metadata.content.title =
-        autocorrect::format_for(&content.metadata.content.title, "markdown").out;
-    content.metadata.content.content =
-        autocorrect::format_for(&content.metadata.content.content, "markdown").out;
+    content.metadata.content.title = autocorrect::format_for(&content.metadata.content.title, "markdown").out;
+    content.metadata.content.content = autocorrect::format_for(&content.metadata.content.content, "markdown").out;
 }
 
 fn extract_slug(content: &Content) -> Result<String> {
@@ -196,12 +173,7 @@ fn extract_slug(content: &Content) -> Result<String> {
         .context("Slug not found")
 }
 
-async fn init_cover_images(
-    content: &Content,
-    slug: &str,
-    output: &Path,
-    obj_output: &Path,
-) -> Vec<String> {
+async fn init_cover_images(content: &Content, slug: &str, output: &Path, obj_output: &Path) -> Vec<String> {
     let mut cover_images = Vec::new();
     let results = batch_download_replace(
         content
@@ -219,10 +191,7 @@ async fn init_cover_images(
         output,
     )
     .await;
-    let results = results
-        .into_iter()
-        .filter_map(Result::ok)
-        .collect::<HashMap<_, _>>();
+    let results = results.into_iter().filter_map(Result::ok).collect::<HashMap<_, _>>();
     for attachment in &content.metadata.content.attachments {
         if let Some(new_url) = results.get(&attachment.address) {
             cover_images.push(new_url.clone());
@@ -266,10 +235,7 @@ async fn download_replace(url: &str, output: &Path, target: &Path) -> Result<Str
     }
     Ok(match download(&url, target).await {
         // 成功，替换成下载的文件相对文章的相对路径
-        Ok(file) => diff_paths(&file, output)
-            .unwrap()
-            .to_string_lossy()
-            .to_string(),
+        Ok(file) => diff_paths(&file, output).unwrap().to_string_lossy().to_string(),
         // 失败，添加死链标记
         Err(err) => {
             error!("Failed to download {}: {}", url, err);
@@ -282,11 +248,9 @@ async fn download_replace(url: &str, output: &Path, target: &Path) -> Result<Str
 async fn download(url: &str, target: &Path) -> Result<PathBuf> {
     static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         reqwest::Client::builder()
-        .user_agent(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0",
-        )
-        .build()
-        .unwrap()
+            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:141.0) Gecko/20100101 Firefox/141.0")
+            .build()
+            .unwrap()
     });
     let resp = CLIENT.get(url).send().await.context("Failed to download")?;
     let extension = resp
@@ -296,9 +260,7 @@ async fn download(url: &str, target: &Path) -> Result<PathBuf> {
         .and_then(|s| mime2ext(s))
         .context("Failed to parse mime type")?;
     let download_file = target.with_extension(extension);
-    let mut file = File::create(&download_file)
-        .await
-        .context("Failed to create file")?;
+    let mut file = File::create(&download_file).await.context("Failed to create file")?;
     let mut stream_reader = StreamReader::new(resp.bytes_stream().map_err(std::io::Error::other));
     io::copy(&mut stream_reader, &mut file).await?;
     Ok(download_file)
@@ -332,20 +294,15 @@ async fn rewrite_html(
 ) -> Result<String> {
     let videos = collect_videos(html).await?;
     let results = batch_download_replace(
-        videos.into_iter().enumerate().map(|(idx, v)| {
-            (
-                v,
-                obj_output.join(format!("{}-video-{}", slug, *video_idx + idx)),
-            )
-        }),
+        videos
+            .into_iter()
+            .enumerate()
+            .map(|(idx, v)| (v, obj_output.join(format!("{}-video-{}", slug, *video_idx + idx)))),
         &output,
     )
     .await;
     *video_idx += results.len();
-    let url_map = results
-        .into_iter()
-        .filter_map(Result::ok)
-        .collect::<HashMap<_, _>>();
+    let url_map = results.into_iter().filter_map(Result::ok).collect::<HashMap<_, _>>();
     let mut buf = Vec::new();
     let mut rewriter = HtmlRewriter::new(
         Settings {

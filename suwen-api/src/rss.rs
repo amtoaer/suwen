@@ -30,12 +30,7 @@ pub(crate) fn generate_rss(site: db::Site, articles: Vec<db::ArticleForRSS>) -> 
                 .map(|article| {
                     rss::ItemBuilder::default()
                         .title(article.title)
-                        .guid(
-                            GuidBuilder::default()
-                                .permalink(false)
-                                .value(article.slug)
-                                .build(),
-                        )
+                        .guid(GuidBuilder::default().permalink(false).value(article.slug).build())
                         .categories(
                             article
                                 .tags

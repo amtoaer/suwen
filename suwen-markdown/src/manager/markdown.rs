@@ -1,13 +1,16 @@
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Local};
 use lol_html::{HtmlRewriter, Settings, element};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::LazyLock};
 use suwen_entity::{Toc, TocItem};
 
-use crate::{highlighter::Highlighter, parse_markdown};
+use crate::highlighter::Highlighter;
+use crate::parse_markdown;
 
 static HIGHLIGHTER: LazyLock<parking_lot::Mutex<Highlighter>> =
     LazyLock::new(|| parking_lot::Mutex::new(Highlighter::new()));
@@ -93,18 +96,11 @@ impl Markdown {
                             let mut buf = Vec::new();
                             let mut rewriter = HtmlRewriter::new(
                                 Settings {
-                                    element_content_handlers: vec![element!(
-                                        "source[src]",
-                                        move |el| {
-                                            let video_url =
-                                                el.get_attribute("src").unwrap_or_default();
-                                            el.set_attribute(
-                                                "src",
-                                                &video_url.replacen(old_slug, new_slug, 1),
-                                            )?;
-                                            Ok(())
-                                        }
-                                    )],
+                                    element_content_handlers: vec![element!("source[src]", move |el| {
+                                        let video_url = el.get_attribute("src").unwrap_or_default();
+                                        el.set_attribute("src", &video_url.replacen(old_slug, new_slug, 1))?;
+                                        Ok(())
+                                    })],
                                     ..Settings::new()
                                 },
                                 |c: &[u8]| buf.extend_from_slice(c),
@@ -119,8 +115,7 @@ impl Markdown {
                     }
                 }
                 let mut buf = String::new();
-                cmark_resume(events.into_iter(), &mut buf, None)
-                    .context("Failed to resume cmark")?;
+                cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
                 *content = buf;
             }
         }
@@ -139,8 +134,7 @@ impl Markdown {
                     }
                 });
                 let mut buf = String::new();
-                cmark_resume(events.into_iter(), &mut buf, None)
-                    .context("Failed to resume cmark")?;
+                cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
                 *content = buf;
             }
         }

@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
 use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
-
 use suwen_entity::{RelatedLinks, Tabs, Toc, VecString};
 
 use crate::routes::IdentityInfo;

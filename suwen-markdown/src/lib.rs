@@ -4,9 +4,11 @@ extern crate tracing;
 mod highlighter;
 pub mod manager;
 
-use anyhow::Result;
-use std::{fs::create_dir_all, path::PathBuf, sync::LazyLock};
+use std::fs::create_dir_all;
+use std::path::PathBuf;
+use std::sync::LazyLock;
 
+use anyhow::Result;
 use pulldown_cmark::{Event, Options, Tag, TagEnd};
 
 pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -21,10 +23,7 @@ pub static UPLOAD_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 pub fn parse_markdown(input: &str) -> Result<Vec<Event<'_>>> {
     let parser = pulldown_cmark::Parser::new_ext(
         input,
-        Options::ENABLE_GFM
-            | Options::ENABLE_TABLES
-            | Options::ENABLE_TASKLISTS
-            | Options::ENABLE_STRIKETHROUGH,
+        Options::ENABLE_GFM | Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH,
     );
     let events = parser.into_iter().collect::<Vec<_>>();
     // 将相邻的 HTML、 Inline HTML 合并

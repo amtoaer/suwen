@@ -1,27 +1,25 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::db::schema::{
-    Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount,
-};
-use crate::db::utils::sha256_hash;
-use crate::db::{ArticleForRSS, Comment, Lang, get_metadata_id_for_slug};
-use crate::routes::IdentityInfo;
 use anyhow::{Result, bail, ensure};
 use chrono::Datelike;
 use dashmap::DashMap;
 use futures::TryStreamExt;
 use futures::stream::FuturesUnordered;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ColumnTrait, ConnectionTrait, JoinType, QueryTrait, TransactionTrait};
 use sea_orm::{
-    DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
+    QueryTrait, RelationTrait, TransactionTrait,
 };
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
-use suwen_markdown::manager::Markdown;
-use suwen_markdown::manager::MarkdownManager;
+use suwen_markdown::manager::{Markdown, MarkdownManager};
 use suwen_migration::{Expr, OnConflict};
+
+use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};
+use crate::db::utils::sha256_hash;
+use crate::db::{ArticleForRSS, Comment, Lang, get_metadata_id_for_slug};
+use crate::routes::IdentityInfo;
 
 pub async fn init(conn: &DatabaseConnection) -> Result<()> {
     let txn = conn.begin().await?;
@@ -101,9 +99,7 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         .await?;
         // temp for rebuild database
         let summary_cache: DashMap<String, Option<String>> = async {
-            let content =
-                tokio::fs::read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache")
-                    .await?;
+            let content = tokio::fs::read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache").await?;
             let result = serde_json::from_str(&content)?;
             Result::<_, anyhow::Error>::Ok(result)
         }
@@ -202,11 +198,7 @@ pub async fn get_articles(
     Ok(query.into_model::<ArticleByList>().all(conn).await?)
 }
 
-pub async fn get_rss_articles(
-    conn: &DatabaseConnection,
-    lang: Lang,
-    limit: u64,
-) -> Result<Vec<ArticleForRSS>> {
+pub async fn get_rss_articles(conn: &DatabaseConnection, lang: Lang, limit: u64) -> Result<Vec<ArticleForRSS>> {
     Ok(content_metadata::Entity::find()
         .select_only()
         .columns([
@@ -242,10 +234,7 @@ pub async fn get_shorts(
 ) -> Result<Vec<Short>> {
     let query = content_metadata::Entity::find()
         .select_only()
-        .columns([
-            content_metadata::Column::Slug,
-            content_metadata::Column::CoverImages,
-        ])
+        .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
         .inner_join(content::Entity)
@@ -268,17 +257,10 @@ pub async fn get_shorts(
     Ok(query.into_model::<Short>().all(conn).await?)
 }
 
-pub async fn get_short_by_slug(
-    conn: &DatabaseConnection,
-    slug: &str,
-    lang: Lang,
-) -> Result<Option<Short>> {
+pub async fn get_short_by_slug(conn: &DatabaseConnection, slug: &str, lang: Lang) -> Result<Option<Short>> {
     Ok(content_metadata::Entity::find()
         .select_only()
-        .columns([
-            content_metadata::Column::Slug,
-            content_metadata::Column::CoverImages,
-        ])
+        .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
         .inner_join(content::Entity)
@@ -294,11 +276,7 @@ pub async fn get_short_by_slug(
         .await?)
 }
 
-pub async fn get_article_by_slug(
-    conn: &DatabaseConnection,
-    slug: &str,
-    lang: Lang,
-) -> Result<Option<ArticleBySlug>> {
+pub async fn get_article_by_slug(conn: &DatabaseConnection, slug: &str, lang: Lang) -> Result<Option<ArticleBySlug>> {
     Ok(content_metadata::Entity::find()
         .select_only()
         .columns([
@@ -357,16 +335,10 @@ pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWit
         .await?)
 }
 
-pub async fn get_archives_grouped_by_year(
-    conn: &DatabaseConnection,
-    lang: Lang,
-) -> Result<Vec<(i32, Vec<Archive>)>> {
+pub async fn get_archives_grouped_by_year(conn: &DatabaseConnection, lang: Lang) -> Result<Vec<(i32, Vec<Archive>)>> {
     let archives = content_metadata::Entity::find()
         .select_only()
-        .columns([
-            content_metadata::Column::Slug,
-            content_metadata::Column::PublishedAt,
-        ])
+        .columns([content_metadata::Column::Slug, content_metadata::Column::PublishedAt])
         .column_as(content::Column::Title, "title")
         .inner_join(content::Entity)
         .filter(
@@ -410,10 +382,7 @@ pub async fn get_articles_by_tag(
         .column_as(content::Column::Intro, "intro")
         .column_as(content::Column::Summary, "summary")
         .inner_join(content_metadata::Entity)
-        .join(
-            JoinType::InnerJoin,
-            content_metadata::Relation::Content.def(),
-        )
+        .join(JoinType::InnerJoin, content_metadata::Relation::Content.def())
         .filter(
             tag::Column::TagName.eq(tag_name).and(
                 content_metadata::Column::ContentType
@@ -490,11 +459,7 @@ pub async fn create_article(
                     })
                     .collect::<Vec<_>>();
                 tag::Entity::insert_many(tag_models)
-                    .on_conflict(
-                        OnConflict::column(tag::Column::TagName)
-                            .do_nothing()
-                            .to_owned(),
-                    )
+                    .on_conflict(OnConflict::column(tag::Column::TagName).do_nothing().to_owned())
                     .do_nothing()
                     .exec(conn)
                     .await?;
@@ -551,18 +516,11 @@ pub async fn create_article(
     Ok(())
 }
 
-pub async fn update_article(
-    conn: &impl ConnectionTrait,
-    markdown: Markdown,
-    lang: Lang,
-) -> Result<()> {
+pub async fn update_article(conn: &impl ConnectionTrait, markdown: Markdown, lang: Lang) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
     match markdown {
         Markdown::Article {
-            slug,
-            title,
-            content,
-            ..
+            slug, title, content, ..
         } => {
             content::Entity::update_many()
                 .filter(
@@ -584,10 +542,7 @@ pub async fn update_article(
                 .await?;
         }
         Markdown::Short {
-            slug,
-            title,
-            content,
-            ..
+            slug, title, content, ..
         } => {
             content::Entity::update_many()
                 .filter(
@@ -640,10 +595,8 @@ pub async fn get_comments_by_slug(conn: &DatabaseConnection, slug: &str) -> Resu
         .find_also_related(suwen_entity::user::Entity)
         .all(conn)
         .await?;
-    let identity_map: HashMap<i32, IdentityInfo> = identities
-        .into_iter()
-        .map(|item| (item.0.id, item.into()))
-        .collect();
+    let identity_map: HashMap<i32, IdentityInfo> =
+        identities.into_iter().map(|item| (item.0.id, item.into())).collect();
     let comments: Result<Vec<Comment>> = parent_comments
         .into_iter()
         .map(|c| match identity_map.get(&c.identity_id) {
@@ -652,22 +605,15 @@ pub async fn get_comments_by_slug(conn: &DatabaseConnection, slug: &str) -> Resu
         })
         .collect();
     let mut comments = comments?;
-    let mut comment_map: HashMap<i32, &mut Comment> =
-        comments.iter_mut().map(|c| (c.id, c)).collect();
+    let mut comment_map: HashMap<i32, &mut Comment> = comments.iter_mut().map(|c| (c.id, c)).collect();
     for reply in child_comments {
         // safety: parent_id must exist in reply_comments
         let parent_id = reply.parent_id.unwrap();
         let Some(parent_comment) = comment_map.get_mut(&parent_id) else {
-            bail!(
-                "Parent {} comment not found for reply {}",
-                parent_id,
-                reply.id
-            );
+            bail!("Parent {} comment not found for reply {}", parent_id, reply.id);
         };
         match identity_map.get(&reply.identity_id) {
-            Some(identity) => parent_comment
-                .replies
-                .push((identity.clone(), reply).into()),
+            Some(identity) => parent_comment.replies.push((identity.clone(), reply).into()),
             None => {
                 bail!("Identity not found for comment {}", reply.id);
             }
@@ -676,16 +622,10 @@ pub async fn get_comments_by_slug(conn: &DatabaseConnection, slug: &str) -> Resu
     Ok(comments)
 }
 
-pub async fn get_sitemap_articles(
-    conn: &DatabaseConnection,
-    lang: Lang,
-) -> Result<Vec<SitemapUrl>> {
+pub async fn get_sitemap_articles(conn: &DatabaseConnection, lang: Lang) -> Result<Vec<SitemapUrl>> {
     Ok(content_metadata::Entity::find()
         .select_only()
-        .columns([
-            content_metadata::Column::Slug,
-            content_metadata::Column::UpdatedAt,
-        ])
+        .columns([content_metadata::Column::Slug, content_metadata::Column::UpdatedAt])
         .inner_join(content::Entity)
         .filter(
             content::Column::LangCode

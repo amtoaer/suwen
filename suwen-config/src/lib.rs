@@ -1,18 +1,17 @@
+use std::fs;
+use std::sync::LazyLock;
+
 use anyhow::{Context, Result};
 use dirs::config_dir;
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
-use std::{fs, sync::LazyLock};
 
-pub static CONFIG: LazyLock<Config> =
-    LazyLock::new(|| Config::init().expect("Failed to initialize config"));
+pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::init().expect("Failed to initialize config"));
 
 fn random_string(length: usize) -> String {
     let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::rng();
-    (0..length)
-        .map(|_| chars.chars().choose(&mut rng).unwrap())
-        .collect()
+    (0..length).map(|_| chars.chars().choose(&mut rng).unwrap()).collect()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,9 +40,7 @@ impl Config {
             .map(|path| path.join("suwen").join("suwen.json"))
             .unwrap_or_else(|| "suwen.json".into());
         match std::fs::read_to_string(&config_path) {
-            Ok(content) => {
-                Ok(serde_json::from_str(&content).context("Failed to parse config file")?)
-            }
+            Ok(content) => Ok(serde_json::from_str(&content).context("Failed to parse config file")?),
             Err(_) => {
                 let config = Config::default();
                 if let Some(parent) = config_path.parent() {

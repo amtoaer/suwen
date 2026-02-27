@@ -4,12 +4,11 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 use jsonwebtoken::{DecodingKey, EncodingKey};
+use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, IntoActiveModel, JoinType, TransactionTrait,
-    TryIntoModel,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, IntoActiveModel, JoinType,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, TransactionTrait, TryIntoModel,
 };
-use sea_orm::{ActiveValue::Set, DatabaseConnection};
-use sea_orm::{EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
 use serde::{Deserialize, Serialize};
 use suwen_config::CONFIG;
 
@@ -37,11 +36,7 @@ impl Claims {
     pub fn decode(token: &str) -> Result<Self> {
         static DECODING_KEY: LazyLock<DecodingKey> =
             LazyLock::new(|| DecodingKey::from_secret(CONFIG.jwt_secret.as_bytes()));
-        let data = jsonwebtoken::decode::<Self>(
-            token,
-            &DECODING_KEY,
-            &jsonwebtoken::Validation::default(),
-        )?;
+        let data = jsonwebtoken::decode::<Self>(token, &DECODING_KEY, &jsonwebtoken::Validation::default())?;
         Ok(data.claims)
     }
 }
@@ -75,10 +70,7 @@ impl Identity {
     }
 
     /// 如果不存在 identity 则新建，确保 identity 存在，在用户进行交互操作时调用
-    pub async fn ensure_identity(
-        &mut self,
-        db: &DatabaseConnection,
-    ) -> Result<&suwen_entity::identity::Model> {
+    pub async fn ensure_identity(&mut self, db: &DatabaseConnection) -> Result<&suwen_entity::identity::Model> {
         match self {
             Identity::None => Err(anyhow::anyhow!("No identity available")),
             Identity::Anonymous { uuid, identity } => match identity {
@@ -94,21 +86,19 @@ impl Identity {
                     Ok(identity.as_ref().unwrap())
                 }
             },
-            Identity::Authenticated { me, identity } | Identity::Admin { me, identity } => {
-                match identity {
-                    Some(identity) => Ok(identity),
-                    None => {
-                        let new_identity = suwen_entity::identity::ActiveModel {
-                            user_id: Set(Some(me.id)),
-                            ..Default::default()
-                        }
-                        .save(db)
-                        .await?;
-                        *identity = Some(new_identity.try_into_model()?);
-                        Ok(identity.as_ref().unwrap())
+            Identity::Authenticated { me, identity } | Identity::Admin { me, identity } => match identity {
+                Some(identity) => Ok(identity),
+                None => {
+                    let new_identity = suwen_entity::identity::ActiveModel {
+                        user_id: Set(Some(me.id)),
+                        ..Default::default()
                     }
+                    .save(db)
+                    .await?;
+                    *identity = Some(new_identity.try_into_model()?);
+                    Ok(identity.as_ref().unwrap())
                 }
-            }
+            },
         }
     }
 }

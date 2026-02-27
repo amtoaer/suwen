@@ -1,23 +1,17 @@
 mod xlog;
 
-use anyhow::Result;
-use futures::{TryStreamExt, stream::FuturesUnordered};
 use std::path::PathBuf;
-use tokio::{
-    fs::{self, create_dir_all},
-    task::JoinSet,
-};
 
+use anyhow::Result;
+use futures::TryStreamExt;
+use futures::stream::FuturesUnordered;
+use tokio::fs::{self, create_dir_all};
+use tokio::task::JoinSet;
 pub use xlog::import_file as XlogImporter;
 
 use crate::manager::Markdown;
 
-pub async fn import_path<T, F>(
-    source: PathBuf,
-    output: PathBuf,
-    obj_output: Option<PathBuf>,
-    importer: T,
-) -> Result<()>
+pub async fn import_path<T, F>(source: PathBuf, output: PathBuf, obj_output: Option<PathBuf>, importer: T) -> Result<()>
 where
     T: Fn(PathBuf, PathBuf, PathBuf) -> F,
     F: Future<Output = Result<Markdown>> + Send + 'static,
@@ -64,12 +58,11 @@ async fn collect_files(source: PathBuf) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::read_to_string, path::PathBuf};
+    use std::fs::read_to_string;
+    use std::path::PathBuf;
 
-    use crate::{
-        manager::importer::{XlogImporter, import_path},
-        parse_markdown,
-    };
+    use crate::manager::importer::{XlogImporter, import_path};
+    use crate::parse_markdown;
 
     #[ignore = "only for manual test"]
     #[tokio::test]
@@ -86,7 +79,9 @@ mod tests {
     #[ignore = "only for manual test"]
     #[test]
     fn test_parse_markdown() {
-        let content = read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported/street-fighter-6-introduction-1.md").unwrap();
+        let content =
+            read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported/street-fighter-6-introduction-1.md")
+                .unwrap();
         let _ = parse_markdown(&content);
     }
 }

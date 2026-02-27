@@ -87,9 +87,7 @@ impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
             Self::Content => Entity::has_many(super::content::Entity).into(),
-            Self::ContentMetadataTag => {
-                Entity::has_many(super::content_metadata_tag::Entity).into()
-            }
+            Self::ContentMetadataTag => Entity::has_many(super::content_metadata_tag::Entity).into(),
         }
     }
 }
@@ -111,11 +109,7 @@ impl Related<super::tag::Entity> for Entity {
         super::content_metadata_tag::Relation::Tag.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(
-            super::content_metadata_tag::Relation::ContentMetadata
-                .def()
-                .rev(),
-        )
+        Some(super::content_metadata_tag::Relation::ContentMetadata.def().rev())
     }
 }
 

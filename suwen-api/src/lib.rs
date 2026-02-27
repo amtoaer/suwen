@@ -3,16 +3,16 @@ extern crate tracing;
 
 use std::sync::LazyLock;
 
-use axum::Extension;
+use axum::extract::{Path as AxumPath, Query, Request};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::{Extension, Router};
+use axum_reverse_proxy::ReverseProxy;
 use reqwest::{StatusCode, header};
 use sea_orm::DatabaseConnection;
 use suwen_config::CONFIG;
 use suwen_markdown::UPLOAD_DIR;
 use tower::ServiceExt;
-
-use axum::extract::{Path as AxumPath, Query};
-use axum::{Router, extract::Request, response::IntoResponse, routing::get};
-use axum_reverse_proxy::ReverseProxy;
 use tower_http::services::ServeFile;
 
 use crate::routes::UrlQuery;
@@ -24,9 +24,8 @@ mod rss;
 mod sitemap;
 mod wrapper;
 
-static FRONTEND_ORIGIN: LazyLock<String> = LazyLock::new(|| {
-    std::env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5545".to_string())
-});
+static FRONTEND_ORIGIN: LazyLock<String> =
+    LazyLock::new(|| std::env::var("FRONTEND_ORIGIN").unwrap_or_else(|_| "http://localhost:5545".to_string()));
 
 pub fn router() -> Router {
     Router::new()
@@ -55,31 +54,18 @@ async fn rss_handler(
         return (StatusCode::INTERNAL_SERVER_ERROR, "Site not initialized").into_response();
     };
     let rss = rss::generate_rss(site, articles);
-    (
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/xml")],
-        rss,
-    )
-        .into_response()
+    (StatusCode::OK, [(header::CONTENT_TYPE, "application/xml")], rss).into_response()
 }
 
 async fn sitemap_handler(
     Query(query): Query<UrlQuery>,
     Extension(conn): Extension<DatabaseConnection>,
 ) -> impl IntoResponse {
-    let base_url = CONFIG
-        .host_url
-        .clone()
-        .unwrap_or_else(|| "https://amto.cc".to_owned());
+    let base_url = CONFIG.host_url.clone().unwrap_or_else(|| "https://amto.cc".to_owned());
     let lang = query.lang.unwrap_or(db::Lang::ZhCN);
     let Ok(articles) = db::get_sitemap_articles(&conn, lang).await else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch data").into_response();
     };
     let sitemap = sitemap::generate_sitemap(&base_url, articles);
-    (
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/xml")],
-        sitemap,
-    )
-        .into_response()
+    (StatusCode::OK, [(header::CONTENT_TYPE, "application/xml")], sitemap).into_response()
 }

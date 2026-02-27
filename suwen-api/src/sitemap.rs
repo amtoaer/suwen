@@ -24,9 +24,7 @@ pub(crate) fn generate_sitemap(base_url: &str, articles: Vec<SitemapUrl>) -> Str
             "monthly",
         );
     }
-    writer
-        .write_event(Event::End(BytesEnd::new("urlset")))
-        .unwrap();
+    writer.write_event(Event::End(BytesEnd::new("urlset"))).unwrap();
     String::from_utf8(writer.into_inner()).unwrap()
 }
 
@@ -38,54 +36,26 @@ fn write_url(
     priority: &str,
     changefreq: &str,
 ) {
-    writer
-        .write_event(Event::Start(BytesStart::new("url")))
-        .unwrap();
-    writer
-        .write_event(Event::Start(BytesStart::new("loc")))
-        .unwrap();
+    writer.write_event(Event::Start(BytesStart::new("url"))).unwrap();
+    writer.write_event(Event::Start(BytesStart::new("loc"))).unwrap();
     let url = if path.is_empty() {
         base_url.to_string()
     } else {
         format!("{}/{}", base_url.trim_end_matches('/'), path)
     };
-    writer
-        .write_event(Event::Text(BytesText::new(&url)))
-        .unwrap();
-    writer
-        .write_event(Event::End(BytesEnd::new("loc")))
-        .unwrap();
+    writer.write_event(Event::Text(BytesText::new(&url))).unwrap();
+    writer.write_event(Event::End(BytesEnd::new("loc"))).unwrap();
     if let Some(lastmod) = lastmod {
-        writer
-            .write_event(Event::Start(BytesStart::new("lastmod")))
-            .unwrap();
+        writer.write_event(Event::Start(BytesStart::new("lastmod"))).unwrap();
         let date = lastmod.format("%Y-%m-%d").to_string();
-        writer
-            .write_event(Event::Text(BytesText::new(&date)))
-            .unwrap();
-        writer
-            .write_event(Event::End(BytesEnd::new("lastmod")))
-            .unwrap();
+        writer.write_event(Event::Text(BytesText::new(&date))).unwrap();
+        writer.write_event(Event::End(BytesEnd::new("lastmod"))).unwrap();
     }
-    writer
-        .write_event(Event::Start(BytesStart::new("changefreq")))
-        .unwrap();
-    writer
-        .write_event(Event::Text(BytesText::new(changefreq)))
-        .unwrap();
-    writer
-        .write_event(Event::End(BytesEnd::new("changefreq")))
-        .unwrap();
-    writer
-        .write_event(Event::Start(BytesStart::new("priority")))
-        .unwrap();
-    writer
-        .write_event(Event::Text(BytesText::new(priority)))
-        .unwrap();
-    writer
-        .write_event(Event::End(BytesEnd::new("priority")))
-        .unwrap();
-    writer
-        .write_event(Event::End(BytesEnd::new("url")))
-        .unwrap();
+    writer.write_event(Event::Start(BytesStart::new("changefreq"))).unwrap();
+    writer.write_event(Event::Text(BytesText::new(changefreq))).unwrap();
+    writer.write_event(Event::End(BytesEnd::new("changefreq"))).unwrap();
+    writer.write_event(Event::Start(BytesStart::new("priority"))).unwrap();
+    writer.write_event(Event::Text(BytesText::new(priority))).unwrap();
+    writer.write_event(Event::End(BytesEnd::new("priority"))).unwrap();
+    writer.write_event(Event::End(BytesEnd::new("url"))).unwrap();
 }

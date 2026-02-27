@@ -1,26 +1,20 @@
 use anyhow::Context;
-use axum::{
-    Extension,
-    extract::{Path, Query},
-    http::HeaderValue,
-    response::IntoResponse,
-    routing::{get, post},
-};
+use axum::Extension;
+use axum::extract::{Path, Query};
+use axum::http::HeaderValue;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 pub(crate) use schema::IdentityInfo;
-use sea_orm::{ActiveValue::Set as ActiveSet, QueryFilter};
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, Set, TransactionTrait,
-};
+use sea_orm::ActiveValue::Set as ActiveSet;
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, Set, TransactionTrait};
 use serde::Deserialize;
 use suwen_entity::content_metadata;
 use suwen_migration::Expr;
 
-use crate::{
-    auth::Identity,
-    db::{self, Archive, Comment, get_metadata_id_for_slug},
-    wrapper::{ApiError, ApiResponse},
-};
+use crate::auth::Identity;
+use crate::db::{self, Archive, Comment, get_metadata_id_for_slug};
+use crate::wrapper::{ApiError, ApiResponse};
 
 mod middleware;
 mod schema;
@@ -58,8 +52,7 @@ impl<'de> serde::Deserialize<'de> for UrlQuery {
         let mut published = None;
         let mut limit = None;
 
-        let map: serde_json::Map<String, serde_json::Value> =
-            serde_json::Map::deserialize(deserializer)?;
+        let map: serde_json::Map<String, serde_json::Value> = serde_json::Map::deserialize(deserializer)?;
 
         if let Some(value) = map.get("lang") {
             lang = value.as_str().and_then(|s| db::Lang::try_from(s).ok());
@@ -91,11 +84,8 @@ async fn me(Extension(identity): Extension<Identity>) -> impl IntoResponse {
         ApiResponse::ok(Into::<IdentityInfo>::into(identity)).into_response()
     } else {
         let uuid = uuid::Uuid::new_v4();
-        let mut resp = ApiResponse::ok(Into::<IdentityInfo>::into(Identity::Anonymous {
-            uuid,
-            identity: None,
-        }))
-        .into_response();
+        let mut resp =
+            ApiResponse::ok(Into::<IdentityInfo>::into(Identity::Anonymous { uuid, identity: None })).into_response();
         let cookie = Cookie::build(("anonymous", uuid.simple().to_string()))
             .path("/")
             .http_only(true)
@@ -109,12 +99,8 @@ async fn me(Extension(identity): Extension<Identity>) -> impl IntoResponse {
     }
 }
 
-async fn get_site(
-    Extension(conn): Extension<DatabaseConnection>,
-) -> Result<ApiResponse<db::Site>, ApiError> {
-    Ok(ApiResponse::ok(
-        db::get_site(&conn).await?.context("Site not found")?,
-    ))
+async fn get_site(Extension(conn): Extension<DatabaseConnection>) -> Result<ApiResponse<db::Site>, ApiError> {
+    Ok(ApiResponse::ok(db::get_site(&conn).await?.context("Site not found")?))
 }
 
 async fn get_articles(
@@ -176,9 +162,7 @@ async fn increase_view_count(
     Extension(conn): Extension<DatabaseConnection>,
     Path((slug,)): Path<(String,)>,
 ) -> Result<ApiResponse<i32>, ApiError> {
-    Ok(ApiResponse::ok(
-        db::increase_article_view_count(&conn, &slug).await?,
-    ))
+    Ok(ApiResponse::ok(db::increase_article_view_count(&conn, &slug).await?))
 }
 
 async fn get_likes(
@@ -285,9 +269,7 @@ async fn add_comment(
         ..Default::default()
     };
     let txn = conn.begin().await?;
-    suwen_entity::comment::Entity::insert(comment_model)
-        .exec(&txn)
-        .await?;
+    suwen_entity::comment::Entity::insert(comment_model).exec(&txn).await?;
     let comment_count = suwen_entity::comment::Entity::find()
         .filter(
             suwen_entity::comment::Column::ContentMetadataId
@@ -298,10 +280,7 @@ async fn add_comment(
         .await?;
     content_metadata::Entity::update_many()
         .filter(content_metadata::Column::Id.eq(metadata_id))
-        .col_expr(
-            content_metadata::Column::CommentCount,
-            Expr::value(comment_count),
-        )
+        .col_expr(content_metadata::Column::CommentCount, Expr::value(comment_count))
         .exec(&txn)
         .await?;
     txn.commit().await?;
@@ -339,9 +318,7 @@ async fn get_comments_by_slug(
     Extension(conn): Extension<DatabaseConnection>,
     Path((slug,)): Path<(String,)>,
 ) -> Result<ApiResponse<Vec<Comment>>, ApiError> {
-    Ok(ApiResponse::ok(
-        db::get_comments_by_slug(&conn, &slug).await?,
-    ))
+    Ok(ApiResponse::ok(db::get_comments_by_slug(&conn, &slug).await?))
 }
 
 pub fn router() -> axum::Router {
@@ -355,9 +332,7 @@ pub fn router() -> axum::Router {
         .route("/articles/{slug}/views", post(increase_view_count))
         .route(
             "/articles/{slug}/comments",
-            get(get_comments_by_slug)
-                .post(add_comment)
-                .delete(delete_comment),
+            get(get_comments_by_slug).post(add_comment).delete(delete_comment),
         )
         .route("/articles/{slug}/likes", get(get_likes).post(like_content))
         .route("/tags", get(get_tags_with_count))

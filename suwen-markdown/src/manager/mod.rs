@@ -1,17 +1,17 @@
-use std::{
-    collections::HashMap,
-    fs::{self, read_dir, read_to_string},
-    path::{Path, PathBuf},
-    process::Stdio,
-    sync::Arc,
-};
+use std::collections::HashMap;
+use std::fs::{self, read_dir, read_to_string};
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
+use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow, bail, ensure};
-use futures::{StreamExt, TryStreamExt, future::ready, stream::FuturesUnordered};
-use pathdiff::diff_paths;
-use tokio::{process::Command, sync::Semaphore};
-
+use futures::future::ready;
+use futures::stream::FuturesUnordered;
+use futures::{StreamExt, TryStreamExt};
 pub use markdown::Markdown;
+use pathdiff::diff_paths;
+use tokio::process::Command;
+use tokio::sync::Semaphore;
 
 pub mod importer;
 mod markdown;
@@ -64,13 +64,8 @@ impl MarkdownManager {
         let mut path_to_remove = vec![origin_path];
         for image in read_dir(&self.obj_output)? {
             let image = image?.path();
-            let old_file_name = image
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or_default();
-            if Self::extract_object_slug_from_file_name(old_file_name)
-                .is_some_and(|s| s == old_slug)
-            {
+            let old_file_name = image.file_name().and_then(|s| s.to_str()).unwrap_or_default();
+            if Self::extract_object_slug_from_file_name(old_file_name).is_some_and(|s| s == old_slug) {
                 fs::copy(
                     &image,
                     image.with_file_name(old_file_name.replacen(old_slug, new_slug, 1)),
@@ -133,11 +128,7 @@ impl MarkdownManager {
                         .stderr(Stdio::null());
                     let status = command.status().await?;
                     if !status.success() {
-                        return Err(anyhow!(
-                            "Failed to convert image {:?} to webp: {}",
-                            file,
-                            status
-                        ));
+                        return Err(anyhow!("Failed to convert image {:?} to webp: {}", file, status));
                     }
                     Ok((file, target_path))
                 }
@@ -164,14 +155,8 @@ impl MarkdownManager {
                 )
                 .or_default()
                 .insert(
-                    diff_paths(old, &self.output)
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string(),
-                    diff_paths(&new, &self.output)
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string(),
+                    diff_paths(old, &self.output).unwrap().to_string_lossy().to_string(),
+                    diff_paths(&new, &self.output).unwrap().to_string_lossy().to_string(),
                 );
         }
         for (slug, rename_map) in image_rename_map {
@@ -230,10 +215,7 @@ mod tests {
             ("goGenerics", "go-generics"),
             ("huawei2021", "huawei-2021"),
             ("jellyfinBasicTutorial", "jellyfin-basic-tutorial"),
-            (
-                "ji-yi-ci-dui-Rust-Embed-ya-suo-de-tan-suo",
-                "rust-embed-compression",
-            ),
+            ("ji-yi-ci-dui-Rust-Embed-ya-suo-de-tan-suo", "rust-embed-compression"),
             (
                 "jie-ba-6-xiang-jie-di-yi-tan--quan-jiao-de-zheng-ti-jie-shao",
                 "street-fighter-6-introduction-1",
@@ -265,10 +247,7 @@ mod tests {
             ("typora", "typora"),
             ("uploadImage", "upload-image"),
             ("uploadImageToDogedoge", "upload-image-to-dogedoge"),
-            (
-                "uploadImageToDogedogeViaPicgo",
-                "upload-image-to-dogedoge-via-picgo",
-            ),
+            ("uploadImageToDogedogeViaPicgo", "upload-image-to-dogedoge-via-picgo"),
             ("useArtitalk", "use-artitalk"),
             ("useFcitx5", "use-fcitx5"),
             ("vscodeLeetcode", "vscode-leetcode"),

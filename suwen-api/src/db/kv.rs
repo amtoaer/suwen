@@ -1,13 +1,13 @@
-use anyhow::Result;
-use sea_orm::{QuerySelect, prelude::*};
 use std::sync::{Arc, LazyLock};
 
+use anyhow::Result;
 use dashmap::DashMap;
+use sea_orm::QuerySelect;
+use sea_orm::prelude::*;
 
 use crate::db;
 
-static KEY_LOCK: LazyLock<DashMap<String, Arc<tokio::sync::Mutex<()>>>> =
-    LazyLock::new(DashMap::new);
+static KEY_LOCK: LazyLock<DashMap<String, Arc<tokio::sync::Mutex<()>>>> = LazyLock::new(DashMap::new);
 
 static SLUG_TO_ID: LazyLock<DashMap<String, i32>> = LazyLock::new(DashMap::new);
 

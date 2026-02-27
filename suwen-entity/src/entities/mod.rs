@@ -15,9 +15,8 @@ pub mod site;
 pub mod tag;
 pub mod user;
 
-pub use site::{RelatedLink, RelatedLinks, Tab, Tabs};
-
 pub use content::{Toc, TocItem};
+pub use site::{RelatedLink, RelatedLinks, Tab, Tabs};
 
 // Reference: https://www.sea-ql.org/SeaORM/docs/generate-entity/column-types/#json-column
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]

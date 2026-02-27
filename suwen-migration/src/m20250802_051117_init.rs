@@ -1,4 +1,5 @@
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
+use sea_orm_migration::schema::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -123,10 +124,7 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_content_metadata_tag_content")
-                            .from(
-                                ContentMetadataTag::Table,
-                                ContentMetadataTag::ContentMetadataId,
-                            )
+                            .from(ContentMetadataTag::Table, ContentMetadataTag::ContentMetadataId)
                             .to(ContentMetadata::Table, ContentMetadata::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -331,30 +329,22 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(Comment::Table).to_owned())
             .await?;
-        manager
-            .drop_table(Table::drop().table(Like::Table).to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table(Like::Table).to_owned()).await?;
         manager
             .drop_table(Table::drop().table(Identity::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(ContentMetadataTag::Table).to_owned())
             .await?;
-        manager
-            .drop_table(Table::drop().table(Tag::Table).to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table(Tag::Table).to_owned()).await?;
         manager
             .drop_table(Table::drop().table(Content::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(ContentMetadata::Table).to_owned())
             .await?;
-        manager
-            .drop_table(Table::drop().table(Site::Table).to_owned())
-            .await?;
-        manager
-            .drop_table(Table::drop().table(User::Table).to_owned())
-            .await?;
+        manager.drop_table(Table::drop().table(Site::Table).to_owned()).await?;
+        manager.drop_table(Table::drop().table(User::Table).to_owned()).await?;
         Ok(())
     }
 }

@@ -1,8 +1,6 @@
 use anyhow::Result;
-use llm::{
-    builder::{LLMBackend, LLMBuilder},
-    chat::ChatMessage,
-};
+use llm::builder::{LLMBackend, LLMBuilder};
+use llm::chat::ChatMessage;
 use suwen_config::CONFIG;
 
 mod utils;
@@ -25,9 +23,5 @@ pub async fn generate_article_summary(article: &str) -> Result<Option<String>> {
         .stream(false)
         .build()?;
     let msgs = vec![ChatMessage::user().content(article).build()];
-    Ok(llm
-        .chat(&msgs)
-        .await?
-        .text()
-        .map(|s| utils::standardize_text(&s)))
+    Ok(llm.chat(&msgs).await?.text().map(|s| utils::standardize_text(&s)))
 }

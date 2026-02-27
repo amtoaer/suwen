@@ -3,26 +3,18 @@ mod query;
 mod redis;
 mod schema;
 mod utils;
-pub use kv::get_metadata_id_for_slug;
-
-use std::{
-    fmt::{Display, Formatter},
-    time::Duration,
-};
-
-pub use query::*;
-pub use schema::*;
+use std::fmt::{Display, Formatter};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use dirs::config_dir;
+pub use kv::get_metadata_id_for_slug;
+pub use query::*;
+pub use schema::*;
 pub use sea_orm::DatabaseConnection;
-use sea_orm::{
-    ConnectOptions, Database, SqlxSqliteConnector,
-    sqlx::{
-        ConnectOptions as SqlxConnectOptions, Sqlite,
-        sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous},
-    },
-};
+use sea_orm::sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
+use sea_orm::sqlx::{ConnectOptions as SqlxConnectOptions, Sqlite};
+use sea_orm::{ConnectOptions, Database, SqlxSqliteConnector};
 use suwen_migration::{Migrator, MigratorTrait};
 use tokio::fs::create_dir_all;
 

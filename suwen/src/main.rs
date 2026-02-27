@@ -1,13 +1,16 @@
 #[macro_use]
 extern crate tracing;
 
+use std::path::PathBuf;
+use std::sync::LazyLock;
+
 use anyhow::Result;
 use axum::Extension;
 use clap::{Parser, Subcommand};
-use std::{path::PathBuf, sync::LazyLock};
 use suwen_api::db::{self, update_articles};
 use suwen_config::CONFIG;
-use suwen_markdown::manager::{MarkdownManager, importer::XlogImporter};
+use suwen_markdown::manager::MarkdownManager;
+use suwen_markdown::manager::importer::XlogImporter;
 use tokio::signal;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -152,29 +155,16 @@ async fn init() -> Result<(redis::aio::ConnectionManager, db::DatabaseConnection
     Ok((redis_connection, sqlite_connection))
 }
 
-async fn import_xlog_content(
-    source: PathBuf,
-    output: PathBuf,
-    obj_output: Option<PathBuf>,
-) -> Result<()> {
-    info!(
-        "Starting to import xlog content from {:?} to {:?}",
-        source, output
-    );
+async fn import_xlog_content(source: PathBuf, output: PathBuf, obj_output: Option<PathBuf>) -> Result<()> {
+    info!("Starting to import xlog content from {:?} to {:?}", source, output);
 
-    suwen_markdown::manager::importer::import_path(source, output, obj_output, XlogImporter)
-        .await?;
+    suwen_markdown::manager::importer::import_path(source, output, obj_output, XlogImporter).await?;
 
     info!("Content import completed");
     Ok(())
 }
 
-fn rename_slug(
-    output: PathBuf,
-    obj_output: Option<PathBuf>,
-    old_slug: String,
-    new_slug: String,
-) -> Result<()> {
+fn rename_slug(output: PathBuf, obj_output: Option<PathBuf>, old_slug: String, new_slug: String) -> Result<()> {
     info!("Renaming slug: {} -> {}", old_slug, new_slug);
 
     let manager = MarkdownManager::new(output, obj_output);
@@ -184,11 +174,7 @@ fn rename_slug(
     Ok(())
 }
 
-async fn convert_images(
-    output: PathBuf,
-    obj_output: Option<PathBuf>,
-    quality: Option<f32>,
-) -> Result<()> {
+async fn convert_images(output: PathBuf, obj_output: Option<PathBuf>, quality: Option<f32>) -> Result<()> {
     info!("Starting to convert images to WebP format");
     let manager = MarkdownManager::new(output, obj_output);
     manager.convert_images(quality).await?;

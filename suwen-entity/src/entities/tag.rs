@@ -56,9 +56,7 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::ContentMetadataTag => {
-                Entity::has_many(super::content_metadata_tag::Entity).into()
-            }
+            Self::ContentMetadataTag => Entity::has_many(super::content_metadata_tag::Entity).into(),
         }
     }
 }
