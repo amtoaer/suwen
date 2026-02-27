@@ -152,6 +152,34 @@ impl Markdown {
         Ok(images)
     }
 
+    pub fn strip_images(&mut self) -> Result<()> {
+        if let Markdown::Short { content, .. } = self {
+            let events = parse_markdown(content)?;
+            let mut filtered_events = Vec::new();
+            let mut skip_next_end = false;
+            for event in events {
+                match event {
+                    Event::Start(Tag::Image { .. }) => {
+                        skip_next_end = true;
+                        continue;
+                    }
+                    Event::End(TagEnd::Image) if skip_next_end => {
+                        skip_next_end = false;
+                        continue;
+                    }
+                    _ => {
+                        filtered_events.push(event);
+                    }
+                }
+            }
+            let mut buf = String::new();
+            cmark_resume(filtered_events.into_iter(), &mut buf, None)
+                .context("Failed to resume cmark after stripping images")?;
+            *content = buf;
+        }
+        Ok(())
+    }
+
     pub fn render_to_html(&self) -> Result<(Option<Toc>, Option<String>)> {
         if matches!(self, Markdown::Short { .. }) {
             return Ok((None, None));

@@ -400,12 +400,13 @@ pub async fn get_articles_by_tag(
 
 pub async fn create_article(
     conn: &impl ConnectionTrait,
-    markdown: Markdown,
+    mut markdown: Markdown,
     lang: Lang,
     summary_cache: &DashMap<String, Option<String>>,
 ) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
     let cover_images = markdown.extract_images()?;
+    markdown.strip_images()?;
     match markdown {
         Markdown::Article {
             slug,
