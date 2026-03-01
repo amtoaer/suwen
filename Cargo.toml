@@ -78,6 +78,10 @@ tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 tokio-util = { version = "0.7.16", features = ["io", "rt"] }
 tower = "0.5.2"
+aws-config = "1.5.1"
+aws-sdk-s3 = "1.53.0"
+aws-credential-types = "1.2.0"
+notify = { version = "6.1.1", features = ["macos_kqueue", "macos_fsevent"] }
 tower-http = { version = "0.6.6", features = [
     "fs",
 ] }

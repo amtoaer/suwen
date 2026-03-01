@@ -15,7 +15,7 @@ use crate::parse_markdown;
 static HIGHLIGHTER: LazyLock<parking_lot::Mutex<Highlighter>> =
     LazyLock::new(|| parking_lot::Mutex::new(Highlighter::new()));
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Markdown {
     Article {
@@ -39,13 +39,13 @@ pub enum Markdown {
     },
 }
 impl Markdown {
-    pub(super) fn slug(&self) -> &str {
+    pub fn slug(&self) -> &str {
         match self {
             Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => slug,
         }
     }
 
-    fn content(&self) -> &str {
+    pub fn content(&self) -> &str {
         match self {
             Markdown::Article { content, .. } | Markdown::Short { content, .. } => content,
         }
@@ -176,6 +176,16 @@ impl Markdown {
             cmark_resume(filtered_events.into_iter(), &mut buf, None)
                 .context("Failed to resume cmark after stripping images")?;
             *content = buf;
+        }
+        Ok(())
+    }
+
+    pub fn auto_format(&mut self) -> Result<()> {
+        match self {
+            Markdown::Article { title, content, .. } | Markdown::Short { title, content, .. } => {
+                *title = autocorrect::format_for(title, "markdown").out;
+                *content = autocorrect::format_for(content, "markdown").out;
+            }
         }
         Ok(())
     }

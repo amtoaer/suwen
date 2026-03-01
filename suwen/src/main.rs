@@ -4,14 +4,16 @@ extern crate tracing;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use axum::Extension;
 use clap::{Parser, Subcommand};
+use dashmap::DashMap;
 use suwen_api::db::{self, update_articles};
 use suwen_config::CONFIG;
-use suwen_markdown::manager::MarkdownManager;
 use suwen_markdown::manager::importer::XlogImporter;
+use suwen_markdown::manager::{MarkdownManager, watcher};
 use tokio::signal;
+use tokio::sync::mpsc;
 use tracing_subscriber::util::SubscriberInitExt;
 
 static BACKEND_PORT: LazyLock<String> =
@@ -28,8 +30,6 @@ struct Cli {
 enum Commands {
     /// Start the server
     Serve,
-    /// Update article content from markdown files
-    UpdateArticle,
     /// Import content from xlog platform
     ImportXlog {
         /// Source path
@@ -57,18 +57,6 @@ enum Commands {
         #[arg(long)]
         new_slug: String,
     },
-    /// Convert images to WebP format
-    ConvertImages {
-        /// Output path
-        #[arg(short, long)]
-        output: PathBuf,
-        /// Image output path (optional, defaults to output/objects)
-        #[arg(short = 'i', long)]
-        obj_output: Option<PathBuf>,
-        /// Quality (0-100) for image conversion (optional, defaults to 80)
-        #[arg(short = 'q', long)]
-        quality: Option<f32>,
-    },
 }
 
 #[tokio::main]
@@ -77,12 +65,6 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Some(Commands::Serve) | None => serve().await,
-        Some(Commands::UpdateArticle) => {
-            let (_redis_connection, sqlite_connection) = init().await?;
-            update_articles(&sqlite_connection).await?;
-            let _ = sqlite_connection.close().await;
-            Ok(())
-        }
         Some(Commands::ImportXlog {
             source,
             output,
@@ -94,11 +76,6 @@ async fn main() -> Result<()> {
             old_slug,
             new_slug,
         }) => rename_slug(output, obj_output, old_slug, new_slug),
-        Some(Commands::ConvertImages {
-            output,
-            obj_output,
-            quality,
-        }) => convert_images(output, obj_output, quality).await,
     }
 }
 
@@ -106,9 +83,37 @@ async fn serve() -> Result<()> {
     let (redis_connection, sqlite_connection) = init().await?;
     let router = suwen_api::router()
         .layer(Extension(sqlite_connection.clone()))
-        .layer(Extension(redis_connection));
+        .layer(Extension(redis_connection.clone()));
     let bind_address = format!("0.0.0.0:{}", BACKEND_PORT.as_str());
     let listener = tokio::net::TcpListener::bind(&bind_address).await?;
+
+    let (db_sender, mut db_receiver) = mpsc::unbounded_channel();
+    let summary_cache: DashMap<String, Option<String>> = DashMap::new();
+
+    if let Some(markdown_path) = &CONFIG.markdown_path {
+        let watch_path = PathBuf::from(markdown_path);
+        if watch_path.exists() {
+            info!("Starting markdown watcher at {:?}", watch_path);
+            let watcher = watcher::MarkdownWatcher::new(watch_path, None, db_sender);
+            tokio::spawn(async move {
+                if let Err(e) = watcher.start_watching().await {
+                    error!("Markdown watcher error: {}", e);
+                }
+            });
+        } else {
+            bail!("Markdown path {:?} does not exist", watch_path);
+        }
+    }
+
+    let db_conn = sqlite_connection.clone();
+    let cache_clone = summary_cache.clone();
+    tokio::spawn(async move {
+        while let Some(change) = db_receiver.recv().await {
+            if let Err(e) = db::handle_markdown_change(&db_conn, change, db::Lang::ZhCN, &cache_clone).await {
+                error!("Failed to handle markdown change: {}", e);
+            }
+        }
+    });
 
     let (tx, rx) = tokio::sync::oneshot::channel();
     tokio::spawn(async move {

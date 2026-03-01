@@ -12,6 +12,7 @@ suwen_config = { workspace = true }
 anyhow = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }
+dashmap = { workspace = true }
 redis = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

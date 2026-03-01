@@ -21,6 +21,24 @@ pub struct Config {
     pub redis_url: String,
     #[serde(default)]
     pub host_url: Option<String>,
+    #[serde(default)]
+    pub r2: Option<R2Config>,
+    #[serde(default = "default_object_storage_domain")]
+    pub object_storage_domain: String,
+    #[serde(default)]
+    pub markdown_path: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct R2Config {
+    pub account_id: String,
+    pub access_key_id: String,
+    pub secret_access_key: String,
+    pub bucket_name: String,
+}
+
+fn default_object_storage_domain() -> String {
+    "https://obj.amto.cc".to_string()
 }
 
 impl Default for Config {
@@ -30,6 +48,9 @@ impl Default for Config {
             openai_api_key: String::new(),
             redis_url: "redis://127.0.0.1/".to_owned(),
             host_url: None,
+            r2: None,
+            object_storage_domain: default_object_storage_domain(),
+            markdown_path: None,
         }
     }
 }

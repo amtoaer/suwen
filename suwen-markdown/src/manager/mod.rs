@@ -15,6 +15,7 @@ use tokio::sync::Semaphore;
 
 pub mod importer;
 mod markdown;
+pub mod watcher;
 
 pub struct MarkdownManager {
     output: PathBuf,

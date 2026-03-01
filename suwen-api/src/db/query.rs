@@ -91,32 +91,7 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         })
         .exec(&txn)
         .await?;
-        let all_markdown_files = MarkdownManager::new(
-            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
-            None,
-        )
-        .all_markdown_files()
-        .await?;
-        // temp for rebuild database
-        let summary_cache: DashMap<String, Option<String>> = async {
-            let content = tokio::fs::read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache").await?;
-            let result = serde_json::from_str(&content)?;
-            Result::<_, anyhow::Error>::Ok(result)
-        }
-        .await
-        .ok()
-        .unwrap_or_default();
-        let tasks = all_markdown_files
-            .into_iter()
-            .map(|file| create_article(&txn, file, Lang::ZhCN, &summary_cache))
-            .collect::<FuturesUnordered<_>>();
-        tasks.try_collect::<Vec<_>>().await?;
         txn.commit().await?;
-        tokio::fs::write(
-            "/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache",
-            serde_json::to_string(&summary_cache)?,
-        )
-        .await?;
     }
     Ok(())
 }
@@ -407,6 +382,7 @@ pub async fn create_article(
     let (toc, rendered_html) = markdown.render_to_html()?;
     let cover_images = markdown.extract_images()?;
     markdown.strip_images()?;
+    markdown.auto_format()?;
     match markdown {
         Markdown::Article {
             slug,
@@ -517,8 +493,75 @@ pub async fn create_article(
     Ok(())
 }
 
-pub async fn update_article(conn: &impl ConnectionTrait, markdown: Markdown, lang: Lang) -> Result<()> {
+/// 处理 markdown 变更事件（创建/更新）
+pub async fn handle_markdown_change(
+    conn: &DatabaseConnection,
+    change: suwen_markdown::manager::watcher::MarkdownChange,
+    lang: Lang,
+    summary_cache: &DashMap<String, Option<String>>,
+) -> Result<()> {
+    match change {
+        suwen_markdown::manager::watcher::MarkdownChange::Created(markdown)
+        | suwen_markdown::manager::watcher::MarkdownChange::Updated(markdown) => {
+            let slug = markdown.slug().to_string();
+            // 检查是否已存在
+            let existing = content_metadata::Entity::find()
+                .filter(content_metadata::Column::Slug.eq(&slug))
+                .one(conn)
+                .await?;
+
+            if existing.is_some() {
+                info!("Updating existing article: {}", slug);
+                update_article(conn, markdown, lang).await?;
+            } else {
+                info!("Creating new article: {}", slug);
+                create_article(conn, markdown, lang, summary_cache).await?;
+            }
+        }
+        suwen_markdown::manager::watcher::MarkdownChange::Deleted(slug) => {
+            info!("Deleting article: {}", slug);
+            if let Some(metadata) = content_metadata::Entity::find()
+                .filter(content_metadata::Column::Slug.eq(&slug))
+                .one(conn)
+                .await?
+            {
+                // 删除关联的 content 记录
+                content::Entity::delete_many()
+                    .filter(content::Column::ContentMetadataId.eq(metadata.id))
+                    .exec(conn)
+                    .await?;
+                // 删除关联的标签关联
+                content_metadata_tag::Entity::delete_many()
+                    .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
+                    .exec(conn)
+                    .await?;
+                // 删除 metadata
+                content_metadata::Entity::delete_by_id(metadata.id).exec(conn).await?;
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown, lang: Lang) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
+    let cover_images = markdown.extract_images()?;
+    markdown.strip_images()?;
+    markdown.auto_format()?;
+
+    // 更新 cover_images 在 content_metadata 中
+    let slug = markdown.slug().to_string();
+    if let Some(metadata) = content_metadata::Entity::find()
+        .filter(content_metadata::Column::Slug.eq(&slug))
+        .one(conn)
+        .await?
+    {
+        let mut metadata_model: content_metadata::ActiveModel = metadata.into();
+        metadata_model.cover_images = Set(cover_images.into());
+        metadata_model.updated_at = Set(chrono::Local::now());
+        content_metadata::Entity::update(metadata_model).exec(conn).await?;
+    }
+
     match markdown {
         Markdown::Article {
             slug, title, content, ..

@@ -11,6 +11,7 @@ suwen_entity = { workspace = true }
 suwen_markdown = { workspace = true }
 suwen_llm = { workspace = true }
 suwen_config = { workspace = true }
+autocorrect = { workspace = true }
 
 anyhow = { workspace = true }
 axum = { workspace = true }
