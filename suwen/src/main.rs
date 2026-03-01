@@ -8,7 +8,7 @@ use anyhow::{Result, bail};
 use axum::Extension;
 use clap::{Parser, Subcommand};
 use dashmap::DashMap;
-use suwen_api::db::{self, update_articles};
+use suwen_api::db;
 use suwen_config::CONFIG;
 use suwen_markdown::manager::importer::XlogImporter;
 use suwen_markdown::manager::{MarkdownManager, watcher};

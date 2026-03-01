@@ -1,11 +1,8 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use anyhow::{Result, bail, ensure};
 use chrono::Datelike;
 use dashmap::DashMap;
-use futures::TryStreamExt;
-use futures::stream::FuturesUnordered;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
@@ -13,7 +10,7 @@ use sea_orm::{
 };
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
-use suwen_markdown::manager::{Markdown, MarkdownManager};
+use suwen_markdown::manager::Markdown;
 use suwen_migration::{Expr, OnConflict};
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};
@@ -93,23 +90,6 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         .await?;
         txn.commit().await?;
     }
-    Ok(())
-}
-
-pub async fn update_articles(conn: &DatabaseConnection) -> Result<()> {
-    let all_markdown_files = MarkdownManager::new(
-        PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
-        None,
-    )
-    .all_markdown_files()
-    .await?;
-    let txn = conn.begin().await?;
-    let tasks = all_markdown_files
-        .into_iter()
-        .map(|file| update_article(&txn, file, Lang::ZhCN))
-        .collect::<FuturesUnordered<_>>();
-    tasks.try_collect::<Vec<_>>().await?;
-    txn.commit().await?;
     Ok(())
 }
 
