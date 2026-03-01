@@ -54,6 +54,7 @@ pub struct MarkdownWatcher {
 pub enum MarkdownChange {
     Upsert(Markdown),
     Deleted(String),
+    SyncExisting(Vec<String>),
 }
 
 impl MarkdownWatcher {
@@ -151,15 +152,25 @@ impl MarkdownWatcher {
 
     /// 初始扫描现有文件
     async fn scan_existing_files(&self) -> Result<()> {
+        let mut existing_slugs = Vec::new();
         let mut entries = tokio::fs::read_dir(&self.watch_path).await?;
+        
+        // 第一步：扫描并处理现有文件，同时收集现有 slug
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "md") {
+                if let Some(slug) = path.file_stem().and_then(|s| s.to_str()) {
+                    existing_slugs.push(slug.to_string());
+                }
                 if let Err(e) = self.process_markdown_file(&path).await {
                     error!("Failed to process markdown file {:?} during initial scan: {}", path, e);
                 }
             }
         }
+
+        // 第二步：发送 SyncExisting 消息，让数据库处理端清理缺失的文件
+        let _ = self.db_sender.send(MarkdownChange::SyncExisting(existing_slugs));
+        
         Ok(())
     }
 

@@ -518,6 +518,41 @@ pub async fn handle_markdown_change(
                 content_metadata::Entity::delete_by_id(metadata.id).exec(conn).await?;
             }
         }
+        suwen_markdown::manager::watcher::MarkdownChange::SyncExisting(existing_slugs) => {
+            info!("Syncing existing articles, found {} files", existing_slugs.len());
+            // 获取数据库中所有的 slug
+            let all_db_slugs = content_metadata::Entity::find()
+                .select_only()
+                .column(content_metadata::Column::Slug)
+                .into_tuple::<String>()
+                .all(conn)
+                .await?;
+            
+            // 找出数据库中存在但文件系统中不存在的 slug
+            for db_slug in all_db_slugs {
+                if !existing_slugs.contains(&db_slug) {
+                    info!("Deleting orphaned article: {}", db_slug);
+                    if let Some(metadata) = content_metadata::Entity::find()
+                        .filter(content_metadata::Column::Slug.eq(&db_slug))
+                        .one(conn)
+                        .await?
+                    {
+                        // 删除关联的 content 记录
+                        content::Entity::delete_many()
+                            .filter(content::Column::ContentMetadataId.eq(metadata.id))
+                            .exec(conn)
+                            .await?;
+                        // 删除关联的标签关联
+                        content_metadata_tag::Entity::delete_many()
+                            .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
+                            .exec(conn)
+                            .await?;
+                        // 删除 metadata
+                        content_metadata::Entity::delete_by_id(metadata.id).exec(conn).await?;
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
