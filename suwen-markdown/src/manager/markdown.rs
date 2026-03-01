@@ -80,18 +80,18 @@ impl Markdown {
 
     pub async fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
-        
+
         // 确保文件以 .md 结尾
         if !path.extension().is_some_and(|ext| ext == "md") {
             bail!("File {:?} does not have .md extension", path);
         }
-        
+
         // 读取文件内容
         let content = tokio::fs::read_to_string(path).await?;
-        
+
         // 从字符串解析
         let mut markdown = Self::from_string(&content)?;
-        
+
         // 从文件名提取 slug 并覆盖
         if let Some(new_slug) = path.file_stem().and_then(|s| s.to_str()) {
             match &mut markdown {
@@ -100,7 +100,7 @@ impl Markdown {
                 }
             }
         }
-        
+
         Ok(markdown)
     }
 
@@ -143,25 +143,6 @@ impl Markdown {
                         _ => {}
                     }
                 }
-                let mut buf = String::new();
-                cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
-                *content = buf;
-            }
-        }
-        Ok(())
-    }
-
-    pub(super) fn replace_images(&mut self, replace_pair: &HashMap<String, String>) -> Result<()> {
-        match self {
-            Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
-                let mut events = parse_markdown(content)?;
-                events.iter_mut().for_each(|event| {
-                    if let Event::Start(Tag::Image { dest_url, .. }) = event
-                        && let Some(new_url) = replace_pair.get(dest_url.as_ref())
-                    {
-                        *dest_url = new_url.clone().into();
-                    }
-                });
                 let mut buf = String::new();
                 cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
                 *content = buf;

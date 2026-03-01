@@ -1,17 +1,9 @@
-use std::collections::HashMap;
 use std::fs::{self, read_dir, read_to_string};
-use std::path::{Path, PathBuf};
-use std::process::Stdio;
-use std::sync::Arc;
+use std::path::PathBuf;
 
-use anyhow::{Context, Result, anyhow, bail, ensure};
-use futures::future::ready;
-use futures::stream::FuturesUnordered;
-use futures::{StreamExt, TryStreamExt};
+use anyhow::{Context, Result, bail};
+
 pub use markdown::Markdown;
-use pathdiff::diff_paths;
-use tokio::process::Command;
-use tokio::sync::Semaphore;
 
 pub mod importer;
 mod markdown;
@@ -77,12 +69,6 @@ impl MarkdownManager {
             fs::remove_file(path)?;
         }
         Ok(())
-    }
-
-    fn extract_object_slug(path: &Path) -> Option<&str> {
-        path.file_name()
-            .and_then(|s| s.to_str())
-            .and_then(|s| Self::extract_object_slug_from_file_name(s))
     }
 
     fn extract_object_slug_from_file_name(file_name: &str) -> Option<&str> {
@@ -170,15 +156,5 @@ mod tests {
         ] {
             markdown_manager.rename_slug(old_slug, new_slug).unwrap();
         }
-    }
-
-    #[ignore = "only for manual test"]
-    #[tokio::test]
-    async fn test_convert_images() {
-        let markdown_manager = super::MarkdownManager::new(
-            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
-            None,
-        );
-        markdown_manager.convert_images(None).await.unwrap();
     }
 }
