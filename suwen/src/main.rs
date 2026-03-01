@@ -178,11 +178,3 @@ fn rename_slug(output: PathBuf, obj_output: Option<PathBuf>, old_slug: String, n
     info!("Slug rename completed");
     Ok(())
 }
-
-async fn convert_images(output: PathBuf, obj_output: Option<PathBuf>, quality: Option<f32>) -> Result<()> {
-    info!("Starting to convert images to WebP format");
-    let manager = MarkdownManager::new(output, obj_output);
-    manager.convert_images(quality).await?;
-    info!("Image conversion completed");
-    Ok(())
-}

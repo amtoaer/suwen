@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::config::Region;
@@ -373,6 +373,44 @@ impl MediaUploader {
     }
 }
 
+/// 判断是否是可转换的图片类型
+fn is_convertible_image(ext: &str) -> bool {
+    matches!(ext.to_lowercase().as_str(), "jpg" | "jpeg" | "png")
+}
+
+/// 将图片转换为 webp 格式
+async fn convert_to_webp(data: &[u8], ext: &str) -> Result<Vec<u8>> {
+    let temp_dir = tempfile::tempdir()?;
+    let input_path = temp_dir.path().join(format!("input.{}", ext));
+    let output_path = temp_dir.path().join("output.webp");
+
+    tokio::fs::write(&input_path, data).await?;
+
+    let status = tokio::process::Command::new("cwebp")
+        .args([
+            "-sharp_yuv",
+            "-mt",
+            "-q",
+            "80",
+            "-metadata",
+            "all",
+            input_path.to_str().unwrap(),
+            "-o",
+            output_path.to_str().unwrap(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .await?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("Failed to convert image to webp"));
+    }
+
+    let webp_data = tokio::fs::read(&output_path).await?;
+    Ok(webp_data)
+}
+
 /// 处理单个媒体资源
 async fn process_single_media(
     resource: &MediaResource,
@@ -393,19 +431,39 @@ async fn process_single_media(
         return Ok(None);
     }
 
-    // 获取文件内容
-    let (data, ext) = fetch_media_content(&resource.url, object_output).await?;
+    // 只对图片类型进行处理，视频跳过
+    if resource.media_type != MediaType::Image {
+        debug!("Skipping non-image media: {}", resource.url);
+        return Ok(None);
+    }
 
-    // 计算 hash
-    let hash = compute_hash(&data);
+    // 获取原始文件内容
+    let (original_data, original_ext) = fetch_media_content(&resource.url, object_output).await?;
 
-    // 生成文件名
-    let filename = format!("{}_{}.{}", slug, hash, ext);
+    // 计算原始文件的 hash
+    let hash = compute_hash(&original_data);
+
+    // 判断是否需要转换
+    let (upload_data, upload_ext) = if is_convertible_image(&original_ext) {
+        // 尝试转换为 webp
+        match convert_to_webp(&original_data, &original_ext).await {
+            Ok(webp_data) => (webp_data, "webp".to_string()),
+            Err(e) => {
+                warn!("Failed to convert image to webp, using original: {}", e);
+                (original_data, original_ext)
+            }
+        }
+    } else {
+        (original_data, original_ext)
+    };
+
+    // 生成文件名（使用原始 hash，但扩展名可能是 webp）
+    let filename = format!("{}_{}.{}", slug, hash, upload_ext);
 
     // 检查 R2 上是否已存在
     if !check_file_exists(r2_config, &filename).await? {
         // 上传到 R2
-        upload_to_r2(r2_config, &filename, &data, &resource.url).await?;
+        upload_to_r2(r2_config, &filename, &upload_data, &resource.url).await?;
     }
 
     let new_url = format!("{}/{}", object_domain.trim_end_matches('/'), filename);
