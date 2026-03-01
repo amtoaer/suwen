@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
@@ -19,6 +20,7 @@ static HIGHLIGHTER: LazyLock<parking_lot::Mutex<Highlighter>> =
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum Markdown {
     Article {
+        #[serde(default)]
         slug: String,
         title: String,
         tags: Vec<String>,
@@ -29,6 +31,7 @@ pub enum Markdown {
         published_at: DateTime<Local>,
     },
     Short {
+        #[serde(default)]
         slug: String,
         title: String,
         #[serde(skip)]
@@ -73,6 +76,32 @@ impl Markdown {
             }
         }
         Ok(metadata)
+    }
+
+    pub async fn from_file(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        
+        // 确保文件以 .md 结尾
+        if !path.extension().is_some_and(|ext| ext == "md") {
+            bail!("File {:?} does not have .md extension", path);
+        }
+        
+        // 读取文件内容
+        let content = tokio::fs::read_to_string(path).await?;
+        
+        // 从字符串解析
+        let mut markdown = Self::from_string(&content)?;
+        
+        // 从文件名提取 slug 并覆盖
+        if let Some(new_slug) = path.file_stem().and_then(|s| s.to_str()) {
+            match &mut markdown {
+                Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => {
+                    *slug = new_slug.to_string();
+                }
+            }
+        }
+        
+        Ok(markdown)
     }
 
     /// 替换 slug，包括修改 metadata 中的 slug，更新正文中的图片引用地址

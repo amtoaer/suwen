@@ -35,8 +35,7 @@ impl MarkdownManager {
             .context("Failed to read markdown directory")?;
         while let Some(entry) = entries.next_entry().await? {
             if entry.path().extension().is_some_and(|ext| ext == "md") {
-                let content = tokio::fs::read_to_string(entry.path()).await?;
-                files.push(Markdown::from_string(&content)?);
+                files.push(Markdown::from_file(entry.path()).await?);
             }
         }
         Ok(files)

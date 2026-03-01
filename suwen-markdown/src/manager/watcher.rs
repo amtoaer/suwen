@@ -166,8 +166,7 @@ impl MarkdownWatcher {
     /// 处理单个 markdown 文件
     async fn process_markdown_file(&self, path: &Path) -> Result<()> {
         info!("Processing markdown file: {:?}", path);
-        let content = tokio::fs::read_to_string(path).await?;
-        let mut markdown = Markdown::from_string(&content)?;
+        let mut markdown = Markdown::from_file(path).await?;
 
         // 检查 R2 配置是否可用
         let Some(r2_config) = &suwen_config::CONFIG.r2 else {
