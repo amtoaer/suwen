@@ -201,9 +201,7 @@ impl MarkdownWatcher {
 
 /// 从 markdown 中提取所有媒体资源（图片和视频）
 pub fn extract_media_from_markdown(markdown: &Markdown) -> Vec<MediaResource> {
-    let content = match markdown {
-        Markdown::Article { content, .. } | Markdown::Short { content, .. } => content,
-    };
+    let content = markdown.content();
 
     let mut resources = Vec::new();
 
