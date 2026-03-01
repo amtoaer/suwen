@@ -52,8 +52,7 @@ pub struct MarkdownWatcher {
 
 #[derive(Debug)]
 pub enum MarkdownChange {
-    Created(Markdown),
-    Updated(Markdown),
+    Upsert(Markdown),
     Deleted(String),
 }
 
@@ -173,7 +172,7 @@ impl MarkdownWatcher {
         // 检查 R2 配置是否可用
         let Some(r2_config) = &suwen_config::CONFIG.r2 else {
             warn!("R2 config not found, skipping media upload");
-            let _ = self.db_sender.send(MarkdownChange::Created(markdown));
+            let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
             return Ok(());
         };
 
@@ -181,7 +180,7 @@ impl MarkdownWatcher {
         let media_resources = extract_media_from_markdown(&markdown);
         if media_resources.is_empty() {
             debug!("No media resources found in markdown");
-            let _ = self.db_sender.send(MarkdownChange::Created(markdown));
+            let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
             return Ok(());
         }
 
@@ -193,7 +192,7 @@ impl MarkdownWatcher {
         update_media_links(&mut markdown, &uploaded_media)?;
 
         // 发送到数据库处理器
-        let _ = self.db_sender.send(MarkdownChange::Created(markdown));
+        let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
 
         Ok(())
     }

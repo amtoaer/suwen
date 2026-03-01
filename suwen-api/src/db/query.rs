@@ -501,8 +501,7 @@ pub async fn handle_markdown_change(
     summary_cache: &DashMap<String, Option<String>>,
 ) -> Result<()> {
     match change {
-        suwen_markdown::manager::watcher::MarkdownChange::Created(markdown)
-        | suwen_markdown::manager::watcher::MarkdownChange::Updated(markdown) => {
+        suwen_markdown::manager::watcher::MarkdownChange::Upsert(markdown) => {
             let slug = markdown.slug().to_string();
             // 检查是否已存在
             let existing = content_metadata::Entity::find()
