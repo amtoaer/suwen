@@ -527,7 +527,7 @@ pub async fn handle_markdown_change(
                 .into_tuple::<String>()
                 .all(conn)
                 .await?;
-            
+
             // 找出数据库中存在但文件系统中不存在的 slug
             for db_slug in all_db_slugs {
                 if !existing_slugs.contains(&db_slug) {

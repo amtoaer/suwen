@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::config::Region;
@@ -154,7 +154,7 @@ impl MarkdownWatcher {
     async fn scan_existing_files(&self) -> Result<()> {
         let mut existing_slugs = Vec::new();
         let mut entries = tokio::fs::read_dir(&self.watch_path).await?;
-        
+
         // 第一步：扫描并处理现有文件，同时收集现有 slug
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
@@ -170,7 +170,7 @@ impl MarkdownWatcher {
 
         // 第二步：发送 SyncExisting 消息，让数据库处理端清理缺失的文件
         let _ = self.db_sender.send(MarkdownChange::SyncExisting(existing_slugs));
-        
+
         Ok(())
     }
 
@@ -314,7 +314,6 @@ fn collect_images_from_html(html: &str) -> Result<Vec<String>> {
 pub struct MediaUploader {
     r2_config: suwen_config::R2Config,
     object_output: PathBuf,
-    s3_client: Option<S3Client>,
 }
 
 impl MediaUploader {
@@ -322,33 +321,7 @@ impl MediaUploader {
         Self {
             r2_config,
             object_output: object_output.to_path_buf(),
-            s3_client: None,
         }
-    }
-
-    async fn get_client(&mut self) -> Result<&S3Client> {
-        if self.s3_client.is_none() {
-            let creds = Credentials::new(
-                &self.r2_config.access_key_id,
-                &self.r2_config.secret_access_key,
-                None,
-                None,
-                "r2",
-            );
-
-            let config = aws_sdk_s3::config::Builder::new()
-                .credentials_provider(creds)
-                .region(Region::new("auto"))
-                .endpoint_url(format!(
-                    "https://{}.r2.cloudflarestorage.com",
-                    self.r2_config.account_id
-                ))
-                .force_path_style(true)
-                .build();
-
-            self.s3_client = Some(S3Client::from_conf(config));
-        }
-        Ok(self.s3_client.as_ref().unwrap())
     }
 
     /// 批量处理媒体资源
@@ -366,8 +339,7 @@ impl MediaUploader {
 
             tasks.push(async move {
                 let _permit = semaphore.acquire().await?;
-                let result = process_single_media(&resource, &slug, &object_output, &r2_config, &object_domain).await;
-                result
+                process_single_media(&resource, &slug, &object_output, &r2_config, &object_domain).await
             });
         }
 
@@ -489,9 +461,9 @@ async fn process_single_media(
 /// 获取媒体内容，支持网络和本地文件
 async fn fetch_media_content(url: &str, object_output: &Path) -> Result<(Vec<u8>, String)> {
     if url.starts_with("http://") || url.starts_with("https://") {
-        fetch_remote_media(&url).await
+        fetch_remote_media(url).await
     } else {
-        fetch_local_media(&url, object_output).await
+        fetch_local_media(url, object_output).await
     }
 }
 
@@ -594,7 +566,7 @@ async fn upload_to_r2(
 
     let client = S3Client::from_conf(config);
 
-    let content_type = match filename.split('.').last() {
+    let content_type = match filename.rsplit_once('.').map(|(_, ext)| ext.to_lowercase()).as_deref() {
         Some("jpg") | Some("jpeg") => "image/jpeg",
         Some("png") => "image/png",
         Some("gif") => "image/gif",
@@ -667,18 +639,18 @@ fn update_html_media_links(html: &str, url_map: &HashMap<String, String>) -> Res
         Settings {
             element_content_handlers: vec![
                 element!("img[src]", |el| {
-                    if let Some(src) = el.get_attribute("src") {
-                        if let Some(new_url) = url_map.get(&src) {
-                            el.set_attribute("src", new_url)?;
-                        }
+                    if let Some(src) = el.get_attribute("src")
+                        && let Some(new_url) = url_map.get(&src)
+                    {
+                        el.set_attribute("src", new_url)?;
                     }
                     Ok(())
                 }),
                 element!("source[src]", |el| {
-                    if let Some(src) = el.get_attribute("src") {
-                        if let Some(new_url) = url_map.get(&src) {
-                            el.set_attribute("src", new_url)?;
-                        }
+                    if let Some(src) = el.get_attribute("src")
+                        && let Some(new_url) = url_map.get(&src)
+                    {
+                        el.set_attribute("src", new_url)?;
                     }
                     Ok(())
                 }),

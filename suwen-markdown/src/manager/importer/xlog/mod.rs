@@ -25,7 +25,7 @@ use crate::manager::importer::xlog::schema::Content;
 use crate::parse_markdown;
 
 pub async fn import_file(file: PathBuf, output: PathBuf, obj_output: PathBuf) -> Result<super::Markdown> {
-    let mut content = read_content(&file).await?;
+    let content = read_content(&file).await?;
     let content_type = extract_type(&content);
     if content_type.is_none_or(|t| t != "post" && t != "short") {
         error!("Unsupported content type in file: {}", file.display());
