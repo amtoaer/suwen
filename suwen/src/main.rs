@@ -62,7 +62,7 @@ async fn serve() -> Result<()> {
         let watch_path = PathBuf::from(markdown_path);
         if watch_path.exists() {
             info!("Starting markdown watcher at {:?}", watch_path);
-            let watcher = MarkdownWatcher::new(watch_path, None, db_sender);
+            let watcher = MarkdownWatcher::new(watch_path, db_sender);
             tokio::spawn(async move {
                 if let Err(e) = watcher.start_watching().await {
                     error!("Markdown watcher error: {}", e);

@@ -43,7 +43,6 @@ pub struct UploadedMedia {
 
 pub struct MarkdownWatcher {
     watch_path: PathBuf,
-    object_output: PathBuf,
     db_sender: mpsc::UnboundedSender<MarkdownChange>,
 }
 
@@ -58,13 +57,10 @@ pub enum MarkdownChange {
 impl MarkdownWatcher {
     pub fn new(
         watch_path: PathBuf,
-        object_output: Option<PathBuf>,
         db_sender: mpsc::UnboundedSender<MarkdownChange>,
     ) -> Self {
-        let object_output = object_output.unwrap_or_else(|| watch_path.join("objects"));
         Self {
             watch_path,
-            object_output,
             db_sender,
         }
     }
@@ -166,8 +162,9 @@ impl MarkdownWatcher {
             return Ok(());
         }
 
-        let uploader = MediaUploader::new(r2_config.clone(), &self.object_output);
-        let uploaded_media = uploader.process_media(&media_resources, markdown.slug()).await?;
+        let uploader = MediaUploader::new(r2_config.clone());
+        let markdown_dir = path.parent().context("Failed to get markdown file directory")?;
+        let uploaded_media = uploader.process_media(&media_resources, markdown.slug(), markdown_dir).await?;
 
         update_media_links(&mut markdown, &uploaded_media)?;
 
@@ -270,18 +267,16 @@ fn collect_images_from_html(html: &str) -> Result<Vec<String>> {
 
 pub struct MediaUploader {
     r2_config: suwen_config::R2Config,
-    object_output: PathBuf,
 }
 
 impl MediaUploader {
-    pub fn new(r2_config: suwen_config::R2Config, object_output: &Path) -> Self {
+    pub fn new(r2_config: suwen_config::R2Config) -> Self {
         Self {
             r2_config,
-            object_output: object_output.to_path_buf(),
         }
     }
 
-    pub async fn process_media(&self, media: &[MediaResource], slug: &str) -> Result<Vec<UploadedMedia>> {
+    pub async fn process_media(&self, media: &[MediaResource], slug: &str, markdown_dir: &Path) -> Result<Vec<UploadedMedia>> {
         let semaphore = Arc::new(Semaphore::new(8));
         let mut tasks = FuturesUnordered::new();
 
@@ -289,13 +284,13 @@ impl MediaUploader {
             let semaphore = semaphore.clone();
             let slug = slug.to_string();
             let resource = resource.clone();
-            let object_output = self.object_output.clone();
+            let markdown_dir = markdown_dir.to_path_buf();
             let r2_config = self.r2_config.clone();
             let object_domain = suwen_config::CONFIG.object_storage_domain.clone();
 
             tasks.push(async move {
                 let _permit = semaphore.acquire().await?;
-                process_single_media(&resource, &slug, &object_output, &r2_config, &object_domain).await
+                process_single_media(&resource, &slug, &markdown_dir, &r2_config, &object_domain).await
             });
         }
 
@@ -351,7 +346,7 @@ async fn convert_to_webp(data: &[u8], ext: &str) -> Result<Vec<u8>> {
 async fn process_single_media(
     resource: &MediaResource,
     slug: &str,
-    object_output: &Path,
+    markdown_dir: &Path,
     r2_config: &suwen_config::R2Config,
     object_domain: &str,
 ) -> Result<Option<UploadedMedia>> {
@@ -370,7 +365,7 @@ async fn process_single_media(
         return Ok(None);
     }
 
-    let (original_data, original_ext) = fetch_media_content(&resource.url, object_output).await?;
+    let (original_data, original_ext) = fetch_media_content(&resource.url, markdown_dir).await?;
 
     let hash = compute_hash(&original_data);
 
@@ -400,11 +395,11 @@ async fn process_single_media(
     }))
 }
 
-async fn fetch_media_content(url: &str, object_output: &Path) -> Result<(Vec<u8>, String)> {
+async fn fetch_media_content(url: &str, markdown_dir: &Path) -> Result<(Vec<u8>, String)> {
     if url.starts_with("http://") || url.starts_with("https://") {
         fetch_remote_media(url).await
     } else {
-        fetch_local_media(url, object_output).await
+        fetch_local_media(url, markdown_dir).await
     }
 }
 
@@ -429,12 +424,11 @@ async fn fetch_remote_media(url: &str) -> Result<(Vec<u8>, String)> {
     Ok((data, ext.to_string()))
 }
 
-async fn fetch_local_media(path: &str, object_output: &Path) -> Result<(Vec<u8>, String)> {
+async fn fetch_local_media(path: &str, markdown_dir: &Path) -> Result<(Vec<u8>, String)> {
     let local_path = if Path::new(path).is_absolute() {
         PathBuf::from(path)
     } else {
-        let try1 = object_output.join(path);
-        if try1.exists() { try1 } else { PathBuf::from(path) }
+        markdown_dir.join(path)
     };
 
     let data = tokio::fs::read(&local_path)
