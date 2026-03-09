@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client as S3Client;
@@ -12,11 +17,6 @@ use notify_debouncer_full::{DebouncedEvent, new_debouncer};
 use pulldown_cmark::{Event as MdEvent, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::LazyLock;
-use std::time::Duration;
 use suwen_config::CONFIG;
 use tokio::sync::{Semaphore, mpsc};
 use tracing::{debug, error, info, warn};
