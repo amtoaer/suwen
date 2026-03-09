@@ -368,7 +368,6 @@ pub async fn create_article(conn: &impl ConnectionTrait, mut markdown: Markdown)
         } => {
             let summary = generate_article_summary(&content).await?;
 
-            // 创建新文章
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
                 content_hash: Set(content_hash),

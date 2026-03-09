@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 use suwen_api::db;
 use suwen_config::CONFIG;
 use suwen_markdown::manager::importer::XlogImporter;
-use suwen_markdown::manager::{MarkdownManager, watcher};
+use suwen_markdown::manager::watcher;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -27,41 +27,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Start the server
     Serve,
-    /// Import content from xlog platform
     ImportXlog {
-        /// Source path
         #[arg(short = 's', long)]
         source: PathBuf,
-        /// Output path
         #[arg(short, long)]
         output: PathBuf,
-        /// Image output path (optional, defaults to output/objects)
         #[arg(short = 'i', long)]
         obj_output: Option<PathBuf>,
-    },
-    /// Rename slug
-    RenameSlug {
-        /// Output path
-        #[arg(short, long)]
-        output: PathBuf,
-        /// Image output path (optional, defaults to output/objects)
-        #[arg(short = 'i', long)]
-        obj_output: Option<PathBuf>,
-        /// Old slug
-        #[arg(long)]
-        old_slug: String,
-        /// New slug
-        #[arg(long)]
-        new_slug: String,
     },
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-
     match cli.command {
         Some(Commands::Serve) | None => serve().await,
         Some(Commands::ImportXlog {
@@ -69,12 +48,6 @@ async fn main() -> Result<()> {
             output,
             obj_output,
         }) => import_xlog_content(source, output, obj_output).await,
-        Some(Commands::RenameSlug {
-            output,
-            obj_output,
-            old_slug,
-            new_slug,
-        }) => rename_slug(output, obj_output, old_slug, new_slug),
     }
 }
 
@@ -83,7 +56,6 @@ async fn serve() -> Result<()> {
     let router = suwen_api::router().layer(Extension(sqlite_connection.clone()));
     let bind_address = format!("0.0.0.0:{}", BACKEND_PORT.as_str());
     let listener = tokio::net::TcpListener::bind(&bind_address).await?;
-
     let (db_sender, mut db_receiver) = mpsc::unbounded_channel();
 
     if let Some(markdown_path) = &CONFIG.markdown_path {
@@ -99,6 +71,8 @@ async fn serve() -> Result<()> {
         } else {
             bail!("Markdown path {:?} does not exist", watch_path);
         }
+    } else {
+        info!("No markdown path configured, skipping markdown watcher");
     }
 
     let db_conn = sqlite_connection.clone();
@@ -115,6 +89,7 @@ async fn serve() -> Result<()> {
         let _ = tx.send(axum::serve(listener, router).await);
     });
     info!("Server running on {}", bind_address);
+
     let mut term = signal::unix::signal(signal::unix::SignalKind::terminate())?;
     let mut int = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
     tokio::select! {
@@ -159,15 +134,5 @@ async fn import_xlog_content(source: PathBuf, output: PathBuf, obj_output: Optio
     suwen_markdown::manager::importer::import_path(source, output, obj_output, XlogImporter).await?;
 
     info!("Content import completed");
-    Ok(())
-}
-
-fn rename_slug(output: PathBuf, obj_output: Option<PathBuf>, old_slug: String, new_slug: String) -> Result<()> {
-    info!("Renaming slug: {} -> {}", old_slug, new_slug);
-
-    let manager = MarkdownManager::new(output, obj_output);
-    manager.rename_slug(&old_slug, &new_slug)?;
-
-    info!("Slug rename completed");
     Ok(())
 }

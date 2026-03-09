@@ -1,14 +1,15 @@
+use std::hash::Hasher;
 use std::path::Path;
 use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Local};
-use lol_html::{HtmlRewriter, Settings, element};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
 use suwen_config::Lang;
 use suwen_entity::{Toc, TocItem};
+use twox_hash::XxHash3_64;
 
 use crate::highlighter::Highlighter;
 use crate::parse_markdown;
@@ -109,19 +110,11 @@ impl Markdown {
 
     pub async fn from_file(path: impl AsRef<Path>, lang: Lang) -> Result<Self> {
         let path = path.as_ref();
-
-        // 确保文件以 .md 结尾
         if path.extension().is_none_or(|ext| ext != "md") {
             bail!("File {:?} does not have .md extension", path);
         }
-
-        // 读取文件内容
         let content = tokio::fs::read_to_string(path).await?;
-
-        // 从字符串解析
         let mut markdown = Self::from_string(&content, lang)?;
-
-        // 从文件名提取 slug 并覆盖
         if let Some(new_slug) = path.file_stem().and_then(|s| s.to_str()) {
             match &mut markdown {
                 Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => {
@@ -129,55 +122,7 @@ impl Markdown {
                 }
             }
         }
-
         Ok(markdown)
-    }
-
-    /// 替换 slug，包括修改 metadata 中的 slug，更新正文中的图片引用地址
-    pub(super) fn rename_slug(&mut self, new_slug: &str) -> Result<()> {
-        let old_slug = self.slug().to_string();
-        match self {
-            Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => {
-                *slug = new_slug.to_string();
-            }
-        }
-        match self {
-            Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
-                let mut events = parse_markdown(content)?;
-                let old_slug = old_slug.as_str();
-                for event in events.iter_mut() {
-                    match event {
-                        Event::Start(Tag::Image { dest_url, .. }) => {
-                            *dest_url = dest_url.replacen(old_slug, new_slug, 1).into();
-                        }
-                        Event::Html(html_content) | Event::InlineHtml(html_content) => {
-                            let mut buf = Vec::new();
-                            let mut rewriter = HtmlRewriter::new(
-                                Settings {
-                                    element_content_handlers: vec![element!("source[src]", move |el| {
-                                        let video_url = el.get_attribute("src").unwrap_or_default();
-                                        el.set_attribute("src", &video_url.replacen(old_slug, new_slug, 1))?;
-                                        Ok(())
-                                    })],
-                                    ..Settings::new()
-                                },
-                                |c: &[u8]| buf.extend_from_slice(c),
-                            );
-                            rewriter.write(html_content.as_bytes())?;
-                            rewriter.end()?;
-                            *html_content = String::from_utf8(buf)
-                                .context("Failed to convert HTML to string")?
-                                .into();
-                        }
-                        _ => {}
-                    }
-                }
-                let mut buf = String::new();
-                cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
-                *content = buf;
-            }
-        }
-        Ok(())
     }
 
     pub fn extract_images(&self) -> Result<Vec<String>> {
@@ -278,18 +223,11 @@ impl Markdown {
     }
 
     pub fn hash(&self) -> String {
-        use std::hash::Hasher;
-
-        use twox_hash::XxHash3_64;
-
         let mut hasher = XxHash3_64::default();
         hasher.write(self.title().as_bytes());
-        let title_hash = hasher.finish();
-
-        hasher = XxHash3_64::default();
         hasher.write(self.content().as_bytes());
-        let content_hash = hasher.finish();
+        let hash = hasher.finish();
 
-        format!("v1:{:x}/{:x}/{}", title_hash, content_hash, self.lang())
+        format!("v1:{:x}/{}", hash, self.lang())
     }
 }
