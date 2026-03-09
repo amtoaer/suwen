@@ -15,6 +15,7 @@ use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use pulldown_cmark::{Event as MdEvent, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
 use sha2::{Digest, Sha256};
+use suwen_config::CONFIG;
 use tokio::sync::{Semaphore, mpsc};
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
@@ -177,7 +178,7 @@ impl MarkdownWatcher {
     /// 处理单个 markdown 文件
     async fn process_markdown_file(&self, path: &Path) -> Result<()> {
         info!("Processing markdown file: {:?}", path);
-        let mut markdown = Markdown::from_file(path).await?;
+        let mut markdown = Markdown::from_file(path, CONFIG.source_lang).await?;
 
         // 检查 R2 配置是否可用
         let Some(r2_config) = &suwen_config::CONFIG.r2 else {

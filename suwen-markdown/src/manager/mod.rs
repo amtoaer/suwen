@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 pub use markdown::Markdown;
+use suwen_config::CONFIG;
 
 pub mod importer;
 mod markdown;
@@ -26,7 +27,7 @@ impl MarkdownManager {
             .context("Failed to read markdown directory")?;
         while let Some(entry) = entries.next_entry().await? {
             if entry.path().extension().is_some_and(|ext| ext == "md") {
-                files.push(Markdown::from_file(entry.path()).await?);
+                files.push(Markdown::from_file(entry.path(), CONFIG.source_lang).await?);
             }
         }
         Ok(files)
@@ -49,7 +50,7 @@ impl MarkdownManager {
                 new_slug
             );
         }
-        let mut content = Markdown::from_string(&read_to_string(&origin_path)?)?;
+        let mut content = Markdown::from_string(&read_to_string(&origin_path)?, CONFIG.source_lang)?;
         content.rename_slug(new_slug)?;
         fs::write(&target_path, content.to_string()?)?;
         let mut path_to_remove = vec![origin_path];

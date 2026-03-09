@@ -7,7 +7,6 @@ use std::sync::LazyLock;
 use anyhow::{Result, bail};
 use axum::Extension;
 use clap::{Parser, Subcommand};
-use dashmap::DashMap;
 use suwen_api::db;
 use suwen_config::CONFIG;
 use suwen_markdown::manager::importer::XlogImporter;
@@ -81,13 +80,11 @@ async fn main() -> Result<()> {
 
 async fn serve() -> Result<()> {
     let sqlite_connection = init().await?;
-    let router = suwen_api::router()
-        .layer(Extension(sqlite_connection.clone()));
+    let router = suwen_api::router().layer(Extension(sqlite_connection.clone()));
     let bind_address = format!("0.0.0.0:{}", BACKEND_PORT.as_str());
     let listener = tokio::net::TcpListener::bind(&bind_address).await?;
 
     let (db_sender, mut db_receiver) = mpsc::unbounded_channel();
-    let summary_cache: DashMap<String, Option<String>> = DashMap::new();
 
     if let Some(markdown_path) = &CONFIG.markdown_path {
         let watch_path = PathBuf::from(markdown_path);
@@ -105,10 +102,9 @@ async fn serve() -> Result<()> {
     }
 
     let db_conn = sqlite_connection.clone();
-    let cache_clone = summary_cache.clone();
     tokio::spawn(async move {
         while let Some(change) = db_receiver.recv().await {
-            if let Err(e) = db::handle_markdown_change(&db_conn, change, db::Lang::ZhCN, &cache_clone).await {
+            if let Err(e) = db::handle_markdown_change(&db_conn, change).await {
                 error!("Failed to handle markdown change: {}", e);
             }
         }

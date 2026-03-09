@@ -17,6 +17,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub slug: String,
+    pub content_hash: String,
     pub cover_images: VecString,
     pub tags: VecString,
     pub content_type: String,
@@ -33,6 +34,7 @@ pub struct Model {
 pub enum Column {
     Id,
     Slug,
+    ContentHash,
     CoverImages,
     Tags,
     ContentType,
@@ -69,6 +71,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Slug => ColumnType::Text.def().unique(),
+            Self::ContentHash => ColumnType::Text.def().unique(),
             Self::CoverImages => ColumnType::Text.def(),
             Self::Tags => ColumnType::Text.def(),
             Self::ContentType => ColumnType::Text.def(),

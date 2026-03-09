@@ -29,6 +29,7 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
+twox-hash = "2.1.2"
 hex = "0.4.3"
 tempfile = "3.10"
 tokio = { workspace = true }

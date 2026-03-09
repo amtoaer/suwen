@@ -53,6 +53,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_auto(ContentMetadata::Id))
                     .col(text(ContentMetadata::Slug).unique_key())
+                    .col(text(ContentMetadata::ContentHash).unique_key())
                     .col(text(ContentMetadata::CoverImages))
                     .col(text(ContentMetadata::Tags))
                     .col(text(ContentMetadata::ContentType))
@@ -362,6 +363,7 @@ enum ContentMetadata {
     Table,
     Id,
     Slug,
+    ContentHash,
     CoverImages,
     Tags,
     ContentType,

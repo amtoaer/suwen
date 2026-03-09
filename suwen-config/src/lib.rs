@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::fs;
 use std::sync::LazyLock;
 
@@ -26,6 +27,8 @@ pub struct Config {
     pub object_storage_domain: String,
     #[serde(default)]
     pub markdown_path: Option<String>,
+    #[serde(default)]
+    pub source_lang: Lang,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -40,6 +43,40 @@ fn default_object_storage_domain() -> String {
     "https://obj.amto.cc".to_string()
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub enum Lang {
+    #[default]
+    ZhCN,
+    EnUS,
+    JaJP,
+    KoKR,
+}
+
+impl Display for Lang {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Lang::ZhCN => write!(f, "zh-CN"),
+            Lang::EnUS => write!(f, "en-US"),
+            Lang::JaJP => write!(f, "ja-JP"),
+            Lang::KoKR => write!(f, "ko-KR"),
+        }
+    }
+}
+
+impl TryFrom<&str> for Lang {
+    type Error = &'static str;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "zh-CN" => Ok(Lang::ZhCN),
+            "en-US" => Ok(Lang::EnUS),
+            "ja-JP" => Ok(Lang::JaJP),
+            "ko-KR" => Ok(Lang::KoKR),
+            _ => Err("Unsupported language code"),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -49,6 +86,7 @@ impl Default for Config {
             r2: None,
             object_storage_domain: default_object_storage_domain(),
             markdown_path: None,
+            source_lang: Default::default(),
         }
     }
 }

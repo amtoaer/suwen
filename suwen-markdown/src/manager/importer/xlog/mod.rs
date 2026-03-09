@@ -14,6 +14,7 @@ use pathdiff::diff_paths;
 use pulldown_cmark::{Event, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
 use regex::{Captures, Regex};
+use suwen_config::CONFIG;
 use tokio::fs::{File, read_to_string};
 use tokio::io;
 use tokio::sync::Semaphore;
@@ -56,6 +57,7 @@ async fn handle_short(content: Content, slug: String, output: &Path, obj_output:
         slug,
         title: content.metadata.content.title,
         content: full_content,
+        lang: CONFIG.source_lang,
         created_at: content.created_at,
         updated_at: content.updated_at,
         published_at: content.published_at,
@@ -132,6 +134,7 @@ async fn handle_post(content: Content, slug: String, output: &Path, obj_output: 
         slug,
         title: content.metadata.content.title,
         content: buf,
+        lang: CONFIG.source_lang,
         tags: content.metadata.content.tags.into_iter().skip(1).collect(),
         created_at: content.created_at,
         updated_at: content.updated_at,

@@ -7,6 +7,7 @@ use lol_html::{HtmlRewriter, Settings, element};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
+use suwen_config::Lang;
 use suwen_entity::{Toc, TocItem};
 
 use crate::highlighter::Highlighter;
@@ -28,6 +29,8 @@ pub enum Markdown {
         created_at: DateTime<Local>,
         updated_at: DateTime<Local>,
         published_at: DateTime<Local>,
+        #[serde(skip)]
+        lang: Lang,
     },
     Short {
         #[serde(default)]
@@ -38,6 +41,8 @@ pub enum Markdown {
         created_at: DateTime<Local>,
         updated_at: DateTime<Local>,
         published_at: DateTime<Local>,
+        #[serde(skip)]
+        lang: Lang,
     },
 }
 impl Markdown {
@@ -50,6 +55,18 @@ impl Markdown {
     pub fn content(&self) -> &str {
         match self {
             Markdown::Article { content, .. } | Markdown::Short { content, .. } => content,
+        }
+    }
+
+    pub fn title(&self) -> &str {
+        match self {
+            Markdown::Article { title, .. } | Markdown::Short { title, .. } => title,
+        }
+    }
+
+    pub fn lang(&self) -> &Lang {
+        match self {
+            Markdown::Article { lang, .. } | Markdown::Short { lang, .. } => lang,
         }
     }
 
@@ -69,7 +86,7 @@ impl Markdown {
         }
     }
 
-    pub(super) fn from_string(input: &str) -> Result<Self> {
+    pub(super) fn from_string(input: &str, lang: Lang) -> Result<Self> {
         let parts = input.splitn(3, "---\n").collect::<Vec<_>>();
         if parts.len() != 3 {
             bail!("Invalid markdown format: missing metadata or content");
@@ -77,14 +94,20 @@ impl Markdown {
         let mut metadata: Markdown = serde_json::from_str(parts[1])?;
         let article = parts[2].to_string();
         match &mut metadata {
-            Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
+            Markdown::Article {
+                content, lang: m_lang, ..
+            }
+            | Markdown::Short {
+                content, lang: m_lang, ..
+            } => {
                 *content = article;
+                *m_lang = lang;
             }
         }
         Ok(metadata)
     }
 
-    pub async fn from_file(path: impl AsRef<Path>) -> Result<Self> {
+    pub async fn from_file(path: impl AsRef<Path>, lang: Lang) -> Result<Self> {
         let path = path.as_ref();
 
         // 确保文件以 .md 结尾
@@ -96,7 +119,7 @@ impl Markdown {
         let content = tokio::fs::read_to_string(path).await?;
 
         // 从字符串解析
-        let mut markdown = Self::from_string(&content)?;
+        let mut markdown = Self::from_string(&content, lang)?;
 
         // 从文件名提取 slug 并覆盖
         if let Some(new_slug) = path.file_stem().and_then(|s| s.to_str()) {
@@ -252,5 +275,21 @@ impl Markdown {
         let mut buf = String::new();
         html::push_html(&mut buf, highlighted_events.into_iter());
         Ok((Some(toc.into()), Some(buf)))
+    }
+
+    pub fn hash(&self) -> String {
+        use std::hash::Hasher;
+
+        use twox_hash::XxHash3_64;
+
+        let mut hasher = XxHash3_64::default();
+        hasher.write(self.title().as_bytes());
+        let title_hash = hasher.finish();
+
+        hasher = XxHash3_64::default();
+        hasher.write(self.content().as_bytes());
+        let content_hash = hasher.finish();
+
+        format!("v1:{:x}/{:x}/{}", title_hash, content_hash, self.lang())
     }
 }

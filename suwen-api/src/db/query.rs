@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use anyhow::{Result, bail, ensure};
 use chrono::Datelike;
-use dashmap::DashMap;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
@@ -349,16 +348,13 @@ pub async fn get_articles_by_tag(
         .await?)
 }
 
-pub async fn create_article(
-    conn: &impl ConnectionTrait,
-    mut markdown: Markdown,
-    lang: Lang,
-    summary_cache: &DashMap<String, Option<String>>,
-) -> Result<()> {
+pub async fn create_article(conn: &impl ConnectionTrait, mut markdown: Markdown) -> Result<()> {
     let (toc, rendered_html) = markdown.render_to_html()?;
     let cover_images = markdown.extract_images()?;
     markdown.strip_images()?;
     markdown.auto_format()?;
+    let content_hash = markdown.hash();
+    let lang = *markdown.lang();
     match markdown {
         Markdown::Article {
             slug,
@@ -368,16 +364,14 @@ pub async fn create_article(
             created_at,
             updated_at,
             published_at,
+            ..
         } => {
-            let summary = if let Some(cache) = summary_cache.get(&format!("{}-{}", slug, lang)) {
-                cache.value().clone()
-            } else {
-                let summary = generate_article_summary(&content).await?;
-                summary_cache.insert(format!("{}-{}", slug, lang), summary.clone());
-                summary
-            };
+            let summary = generate_article_summary(&content).await?;
+
+            // 创建新文章
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
+                content_hash: Set(content_hash),
                 content_type: Set("article".into()),
                 cover_images: Set(cover_images.into()),
                 tags: Set(tags.clone().into()),
@@ -391,6 +385,8 @@ pub async fn create_article(
             })
             .exec(conn)
             .await?;
+            let metadata_id = result.last_insert_id;
+
             content::Entity::insert(content::ActiveModel {
                 title: Set(title),
                 original_text: Set(content),
@@ -398,7 +394,7 @@ pub async fn create_article(
                 toc: Set(toc),
                 lang_code: Set(lang.to_string()),
                 summary: Set(summary),
-                content_metadata_id: Set(result.last_insert_id),
+                content_metadata_id: Set(metadata_id),
                 ..Default::default()
             })
             .exec(conn)
@@ -407,7 +403,7 @@ pub async fn create_article(
                 let tag_associations = tags
                     .iter()
                     .map(|tag| content_metadata_tag::ActiveModel {
-                        content_metadata_id: Set(result.last_insert_id),
+                        content_metadata_id: Set(metadata_id),
                         tag_name: Set(tag.clone()),
                     })
                     .collect::<Vec<_>>();
@@ -423,9 +419,12 @@ pub async fn create_article(
             created_at,
             updated_at,
             published_at,
+            ..
         } => {
+            // 创建新短文
             let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
                 slug: Set(slug),
+                content_hash: Set(content_hash),
                 content_type: Set("gallery".into()),
                 cover_images: Set(cover_images.into()),
                 tags: Set(vec![].into()),
@@ -439,11 +438,13 @@ pub async fn create_article(
             })
             .exec(conn)
             .await?;
+            let metadata_id = result.last_insert_id;
+
             content::Entity::insert(content::ActiveModel {
                 title: Set(title),
                 original_text: Set(content),
                 lang_code: Set(lang.to_string()),
-                content_metadata_id: Set(result.last_insert_id),
+                content_metadata_id: Set(metadata_id),
                 ..Default::default()
             })
             .exec(conn)
@@ -454,12 +455,7 @@ pub async fn create_article(
 }
 
 /// 处理 markdown 变更事件（创建/更新）
-pub async fn handle_markdown_change(
-    conn: &DatabaseConnection,
-    change: MarkdownChange,
-    lang: Lang,
-    summary_cache: &DashMap<String, Option<String>>,
-) -> Result<()> {
+pub async fn handle_markdown_change(conn: &DatabaseConnection, change: MarkdownChange) -> Result<()> {
     let txn = conn.begin().await?;
     match change {
         MarkdownChange::Upsert(markdown) => {
@@ -470,10 +466,10 @@ pub async fn handle_markdown_change(
                 .await?;
             if existing.is_some() {
                 info!("Updating existing article: {}", slug);
-                update_article(&txn, markdown, lang).await?;
+                update_article(&txn, markdown).await?;
             } else {
                 info!("Creating new article: {}", slug);
-                create_article(&txn, markdown, lang, summary_cache).await?;
+                create_article(&txn, markdown).await?;
             }
         }
         MarkdownChange::Deleted(slug) => {
@@ -494,18 +490,26 @@ pub async fn handle_markdown_change(
     Ok(txn.commit().await?)
 }
 
-pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown, lang: Lang) -> Result<()> {
+pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown) -> Result<()> {
     let cover_images = markdown.extract_images()?;
     markdown.strip_images()?;
     markdown.auto_format()?;
+    let content_hash = markdown.hash();
+    let lang = *markdown.lang();
     let (toc, rendered_html) = markdown.render_to_html()?;
     let new_tags = markdown.tags();
     let slug = markdown.slug().to_string();
+
     if let Some(metadata) = content_metadata::Entity::find()
         .filter(content_metadata::Column::Slug.eq(&slug))
         .one(conn)
         .await?
     {
+        // content_hash未变化，不需要更新
+        if metadata.content_hash == content_hash {
+            return Ok(());
+        }
+
         content_metadata_tag::Entity::delete_many()
             .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
             .exec(conn)
@@ -523,6 +527,7 @@ pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown,
                 .await?;
         }
         let mut metadata_model: content_metadata::ActiveModel = metadata.into();
+        metadata_model.content_hash = Set(content_hash);
         metadata_model.cover_images = Set(cover_images.into());
         metadata_model.tags = Set(new_tags.clone().into());
         metadata_model.updated_at = Set(chrono::Local::now());
@@ -533,6 +538,7 @@ pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown,
         Markdown::Article {
             slug, title, content, ..
         } => {
+            let summary = generate_article_summary(&content).await?;
             content::Entity::update_many()
                 .filter(
                     content::Column::LangCode.eq(lang.to_string()).and(
@@ -549,6 +555,7 @@ pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown,
                 .col_expr(content::Column::OriginalText, Expr::value(content))
                 .col_expr(content::Column::RenderedHtml, Expr::value(rendered_html))
                 .col_expr(content::Column::Toc, Expr::value(toc))
+                .col_expr(content::Column::Summary, Expr::value(summary))
                 .exec(conn)
                 .await?;
         }
