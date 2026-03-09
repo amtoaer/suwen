@@ -21,8 +21,8 @@ use tokio::sync::Semaphore;
 use tokio_util::io::StreamReader;
 use yaml_rust2::YamlLoader;
 
-use crate::manager::importer::Markdown;
-use crate::manager::importer::xlog::schema::Content;
+use crate::importer::Markdown;
+use crate::importer::xlog::schema::Content;
 use crate::parse_markdown;
 
 pub async fn import_file(file: PathBuf, output: PathBuf, obj_output: PathBuf) -> Result<super::Markdown> {

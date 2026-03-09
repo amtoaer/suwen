@@ -9,8 +9,7 @@ use sea_orm::{
 };
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
-use suwen_markdown::manager::Markdown;
-use suwen_markdown::manager::watcher::MarkdownChange;
+use suwen_markdown::{Markdown, MarkdownChange};
 use suwen_migration::Expr;
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};

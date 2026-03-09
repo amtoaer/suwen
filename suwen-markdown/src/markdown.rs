@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
 use chrono::{DateTime, Local};
+use parking_lot::Mutex;
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
@@ -14,8 +15,7 @@ use twox_hash::XxHash3_64;
 use crate::highlighter::Highlighter;
 use crate::parse_markdown;
 
-static HIGHLIGHTER: LazyLock<parking_lot::Mutex<Highlighter>> =
-    LazyLock::new(|| parking_lot::Mutex::new(Highlighter::new()));
+static HIGHLIGHTER: LazyLock<Mutex<Highlighter>> = LazyLock::new(|| Mutex::new(Highlighter::new()));
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase", tag = "type")]

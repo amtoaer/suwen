@@ -9,8 +9,8 @@ use axum::Extension;
 use clap::{Parser, Subcommand};
 use suwen_api::db;
 use suwen_config::CONFIG;
-use suwen_markdown::manager::importer::XlogImporter;
-use suwen_markdown::manager::watcher;
+use suwen_markdown::MarkdownWatcher;
+use suwen_markdown::importer::XlogImporter;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -62,7 +62,7 @@ async fn serve() -> Result<()> {
         let watch_path = PathBuf::from(markdown_path);
         if watch_path.exists() {
             info!("Starting markdown watcher at {:?}", watch_path);
-            let watcher = watcher::MarkdownWatcher::new(watch_path, None, db_sender);
+            let watcher = MarkdownWatcher::new(watch_path, None, db_sender);
             tokio::spawn(async move {
                 if let Err(e) = watcher.start_watching().await {
                     error!("Markdown watcher error: {}", e);
@@ -131,7 +131,7 @@ async fn init() -> Result<db::DatabaseConnection> {
 async fn import_xlog_content(source: PathBuf, output: PathBuf, obj_output: Option<PathBuf>) -> Result<()> {
     info!("Starting to import xlog content from {:?} to {:?}", source, output);
 
-    suwen_markdown::manager::importer::import_path(source, output, obj_output, XlogImporter).await?;
+    suwen_markdown::importer::import_path(source, output, obj_output, XlogImporter).await?;
 
     info!("Content import completed");
     Ok(())

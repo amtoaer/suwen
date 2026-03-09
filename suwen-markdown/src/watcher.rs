@@ -20,8 +20,7 @@ use tokio::sync::{Semaphore, mpsc};
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
-use crate::manager::Markdown;
-use crate::parse_markdown;
+use crate::{Markdown, parse_markdown};
 
 const DEBOUNCE_DURATION: Duration = Duration::from_millis(500);
 
@@ -35,14 +34,12 @@ pub enum MediaType {
 pub struct MediaResource {
     pub url: String,
     pub media_type: MediaType,
-    pub is_html: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct UploadedMedia {
     pub original_url: String,
     pub new_url: String,
-    pub media_type: MediaType,
 }
 
 pub struct MarkdownWatcher {
@@ -230,7 +227,6 @@ pub fn extract_media_from_markdown(markdown: &Markdown) -> Vec<MediaResource> {
                 resources.push(MediaResource {
                     url: dest_url.to_string(),
                     media_type: MediaType::Image,
-                    is_html: false,
                 });
             }
             MdEvent::Html(html) | MdEvent::InlineHtml(html) => {
@@ -254,7 +250,6 @@ fn extract_media_from_html(html: &str) -> Vec<MediaResource> {
             resources.push(MediaResource {
                 url,
                 media_type: MediaType::Video,
-                is_html: true,
             });
         }
     }
@@ -265,7 +260,6 @@ fn extract_media_from_html(html: &str) -> Vec<MediaResource> {
             resources.push(MediaResource {
                 url,
                 media_type: MediaType::Image,
-                is_html: true,
             });
         }
     }
@@ -455,7 +449,6 @@ async fn process_single_media(
     Ok(Some(UploadedMedia {
         original_url: resource.url.clone(),
         new_url,
-        media_type: resource.media_type.clone(),
     }))
 }
 

@@ -1,8 +1,14 @@
 #[macro_use]
 extern crate tracing;
 
+pub mod importer;
+
+pub use markdown::Markdown;
+pub use watcher::{MarkdownChange, MarkdownWatcher};
+
 mod highlighter;
-pub mod manager;
+mod markdown;
+mod watcher;
 
 use std::fs::create_dir_all;
 use std::path::PathBuf;
