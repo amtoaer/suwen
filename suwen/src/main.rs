@@ -80,10 +80,9 @@ async fn main() -> Result<()> {
 }
 
 async fn serve() -> Result<()> {
-    let (redis_connection, sqlite_connection) = init().await?;
+    let sqlite_connection = init().await?;
     let router = suwen_api::router()
-        .layer(Extension(sqlite_connection.clone()))
-        .layer(Extension(redis_connection.clone()));
+        .layer(Extension(sqlite_connection.clone()));
     let bind_address = format!("0.0.0.0:{}", BACKEND_PORT.as_str());
     let listener = tokio::net::TcpListener::bind(&bind_address).await?;
 
@@ -138,7 +137,7 @@ async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn init() -> Result<(redis::aio::ConnectionManager, db::DatabaseConnection)> {
+async fn init() -> Result<db::DatabaseConnection> {
     tracing_subscriber::fmt::Subscriber::builder()
         .compact()
         .with_target(false)
@@ -153,11 +152,9 @@ async fn init() -> Result<(redis::aio::ConnectionManager, db::DatabaseConnection
         .finish()
         .try_init()
         .expect("Failed to initialize logging");
-    let redis_client = redis::Client::open(CONFIG.redis_url.as_str())?;
-    let redis_connection = redis_client.get_connection_manager().await?;
     let sqlite_connection = db::database_connection().await?;
     db::init(&sqlite_connection).await?;
-    Ok((redis_connection, sqlite_connection))
+    Ok(sqlite_connection)
 }
 
 async fn import_xlog_content(source: PathBuf, output: PathBuf, obj_output: Option<PathBuf>) -> Result<()> {

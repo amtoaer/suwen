@@ -1,6 +1,5 @@
 mod kv;
 mod query;
-mod redis;
 mod schema;
 mod utils;
 use std::fmt::{Display, Formatter};

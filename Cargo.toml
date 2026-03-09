@@ -48,7 +48,6 @@ pathdiff = "0.2.3"
 pulldown-cmark = "0.13.0"
 pulldown-cmark-to-cmark = "21.0.0"
 rand = "0.9.2"
-redis = { version = "0.32.6", features = ["tokio-comp", "connection-manager"] }
 regex = "1.11.1"
 reqwest = { version = "0.12.22", features = [
     "charset",
