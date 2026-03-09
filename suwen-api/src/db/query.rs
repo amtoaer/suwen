@@ -478,48 +478,17 @@ pub async fn handle_markdown_change(
         }
         MarkdownChange::Deleted(slug) => {
             info!("Deleting article: {}", slug);
-            if let Some(metadata) = content_metadata::Entity::find()
+            content_metadata::Entity::delete_many()
                 .filter(content_metadata::Column::Slug.eq(&slug))
-                .one(&txn)
-                .await?
-            {
-                content::Entity::delete_many()
-                    .filter(content::Column::ContentMetadataId.eq(metadata.id))
-                    .exec(&txn)
-                    .await?;
-                content_metadata_tag::Entity::delete_many()
-                    .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
-                    .exec(&txn)
-                    .await?;
-                content_metadata::Entity::delete_by_id(metadata.id).exec(&txn).await?;
-            }
+                .exec(&txn)
+                .await?;
         }
         MarkdownChange::SyncExisting(existing_slugs) => {
             info!("Syncing existing articles, found {} files", existing_slugs.len());
-            let all_db_slugs = content_metadata::Entity::find()
-                .select_only()
-                .column(content_metadata::Column::Slug)
-                .into_tuple::<String>()
-                .all(&txn)
+            content_metadata::Entity::delete_many()
+                .filter(content_metadata::Column::Slug.is_not_in(existing_slugs))
+                .exec(&txn)
                 .await?;
-            for db_slug in all_db_slugs {
-                if !existing_slugs.contains(&db_slug)
-                    && let Some(metadata) = content_metadata::Entity::find()
-                        .filter(content_metadata::Column::Slug.eq(&db_slug))
-                        .one(&txn)
-                        .await?
-                {
-                    content::Entity::delete_many()
-                        .filter(content::Column::ContentMetadataId.eq(metadata.id))
-                        .exec(&txn)
-                        .await?;
-                    content_metadata_tag::Entity::delete_many()
-                        .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
-                        .exec(&txn)
-                        .await?;
-                    content_metadata::Entity::delete_by_id(metadata.id).exec(&txn).await?;
-                }
-            }
         }
     }
     Ok(txn.commit().await?)
