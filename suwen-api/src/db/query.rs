@@ -12,7 +12,7 @@ use suwen_entity::*;
 use suwen_llm::generate_article_summary;
 use suwen_markdown::manager::Markdown;
 use suwen_markdown::manager::watcher::MarkdownChange;
-use suwen_migration::{Expr, OnConflict};
+use suwen_migration::Expr;
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};
 use crate::db::utils::sha256_hash;
@@ -276,16 +276,11 @@ pub async fn increase_article_view_count(conn: &DatabaseConnection, slug: &str) 
 }
 
 pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWithCount>> {
-    Ok(tag::Entity::find()
+    Ok(content_metadata_tag::Entity::find()
         .select_only()
-        .column(tag::Column::TagName)
-        .join(JoinType::LeftJoin, tag::Relation::ContentMetadataTag.def())
-        .join(
-            JoinType::LeftJoin,
-            content_metadata_tag::Relation::ContentMetadata.def(),
-        )
-        .column_as(content_metadata::Column::Id.count(), "count")
-        .group_by(tag::Column::TagName)
+        .column(content_metadata_tag::Column::TagName)
+        .column_as(content_metadata_tag::Column::ContentMetadataId.count(), "count")
+        .group_by(content_metadata_tag::Column::TagName)
         .into_model::<TagWithCount>()
         .all(conn)
         .await?)
@@ -323,9 +318,9 @@ pub async fn get_articles_by_tag(
     sort_column: content_metadata::Column,
     limit: u64,
 ) -> Result<Vec<ArticleByList>> {
-    Ok(tag::Entity::find()
+    Ok(content_metadata_tag::Entity::find()
         .select_only()
-        .column(tag::Column::TagName)
+        .column(content_metadata_tag::Column::TagName)
         .columns([
             content_metadata::Column::Slug,
             content_metadata::Column::CoverImages,
@@ -340,7 +335,7 @@ pub async fn get_articles_by_tag(
         .inner_join(content_metadata::Entity)
         .join(JoinType::InnerJoin, content_metadata::Relation::Content.def())
         .filter(
-            tag::Column::TagName.eq(tag_name).and(
+            content_metadata_tag::Column::TagName.eq(tag_name).and(
                 content_metadata::Column::ContentType
                     .eq("article")
                     .and(content::Column::LangCode.eq(lang.to_string()))
@@ -409,27 +404,11 @@ pub async fn create_article(
             .exec(conn)
             .await?;
             if !tags.is_empty() {
-                let tag_models = tags
+                let tag_associations = tags
                     .iter()
-                    .map(|tag| tag::ActiveModel {
-                        tag_name: Set(tag.clone()),
-                        ..Default::default()
-                    })
-                    .collect::<Vec<_>>();
-                tag::Entity::insert_many(tag_models)
-                    .on_conflict(OnConflict::column(tag::Column::TagName).do_nothing().to_owned())
-                    .do_nothing()
-                    .exec(conn)
-                    .await?;
-                let tag_records = tag::Entity::find()
-                    .filter(tag::Column::TagName.is_in(tags))
-                    .all(conn)
-                    .await?;
-                let tag_associations = tag_records
-                    .into_iter()
                     .map(|tag| content_metadata_tag::ActiveModel {
                         content_metadata_id: Set(result.last_insert_id),
-                        tag_id: Set(tag.id),
+                        tag_name: Set(tag.clone()),
                     })
                     .collect::<Vec<_>>();
                 content_metadata_tag::Entity::insert_many(tag_associations)
@@ -547,20 +526,36 @@ pub async fn handle_markdown_change(
 }
 
 pub async fn update_article(conn: &impl ConnectionTrait, mut markdown: Markdown, lang: Lang) -> Result<()> {
-    let (toc, rendered_html) = markdown.render_to_html()?;
     let cover_images = markdown.extract_images()?;
     markdown.strip_images()?;
     markdown.auto_format()?;
-
-    // 更新 cover_images 在 content_metadata 中
+    let (toc, rendered_html) = markdown.render_to_html()?;
+    let new_tags = markdown.tags();
     let slug = markdown.slug().to_string();
     if let Some(metadata) = content_metadata::Entity::find()
         .filter(content_metadata::Column::Slug.eq(&slug))
         .one(conn)
         .await?
     {
+        content_metadata_tag::Entity::delete_many()
+            .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata.id))
+            .exec(conn)
+            .await?;
+        if !new_tags.is_empty() {
+            let tag_associations = new_tags
+                .iter()
+                .map(|tag| content_metadata_tag::ActiveModel {
+                    content_metadata_id: Set(metadata.id),
+                    tag_name: Set(tag.clone()),
+                })
+                .collect::<Vec<_>>();
+            content_metadata_tag::Entity::insert_many(tag_associations)
+                .exec(conn)
+                .await?;
+        }
         let mut metadata_model: content_metadata::ActiveModel = metadata.into();
         metadata_model.cover_images = Set(cover_images.into());
+        metadata_model.tags = Set(new_tags.clone().into());
         metadata_model.updated_at = Set(chrono::Local::now());
         content_metadata::Entity::update(metadata_model).exec(conn).await?;
     }

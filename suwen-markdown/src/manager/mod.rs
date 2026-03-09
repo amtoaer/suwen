@@ -2,7 +2,6 @@ use std::fs::{self, read_dir, read_to_string};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
-
 pub use markdown::Markdown;
 
 pub mod importer;

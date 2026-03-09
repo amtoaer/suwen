@@ -14,23 +14,23 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
 pub struct Model {
     pub content_metadata_id: i32,
-    pub tag_id: i32,
+    pub tag_name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     ContentMetadataId,
-    TagId,
+    TagName,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
     ContentMetadataId,
-    TagId,
+    TagName,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (i32, i32);
+    type ValueType = (i32, String);
     fn auto_increment() -> bool {
         false
     }
@@ -39,7 +39,6 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     ContentMetadata,
-    Tag,
 }
 
 impl ColumnTrait for Column {
@@ -47,7 +46,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             Self::ContentMetadataId => ColumnType::Integer.def(),
-            Self::TagId => ColumnType::Integer.def(),
+            Self::TagName => ColumnType::Text.def(),
         }
     }
 }
@@ -59,10 +58,6 @@ impl RelationTrait for Relation {
                 .from(Column::ContentMetadataId)
                 .to(super::content_metadata::Column::Id)
                 .into(),
-            Self::Tag => Entity::belongs_to(super::tag::Entity)
-                .from(Column::TagId)
-                .to(super::tag::Column::Id)
-                .into(),
         }
     }
 }
@@ -70,12 +65,6 @@ impl RelationTrait for Relation {
 impl Related<super::content_metadata::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ContentMetadata.def()
-    }
-}
-
-impl Related<super::tag::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Tag.def()
     }
 }
 

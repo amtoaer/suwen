@@ -104,13 +104,4 @@ impl Related<super::content_metadata_tag::Entity> for Entity {
     }
 }
 
-impl Related<super::tag::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::content_metadata_tag::Relation::Tag.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::content_metadata_tag::Relation::ContentMetadata.def().rev())
-    }
-}
-
 impl ActiveModelBehavior for ActiveModel {}

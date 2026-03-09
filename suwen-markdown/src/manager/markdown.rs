@@ -54,6 +54,13 @@ impl Markdown {
         }
     }
 
+    pub fn tags(&self) -> Vec<String> {
+        match self {
+            Markdown::Article { tags, .. } => tags.clone(),
+            Markdown::Short { .. } => Vec::new(),
+        }
+    }
+
     pub(super) fn to_string(&self) -> Result<String> {
         let metadata = serde_json::to_string_pretty(self)?;
         match self {

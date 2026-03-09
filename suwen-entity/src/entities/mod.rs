@@ -12,7 +12,6 @@ pub mod content_metadata_tag;
 pub mod identity;
 pub mod like;
 pub mod site;
-pub mod tag;
 pub mod user;
 
 pub use content::{Toc, TocItem};
