@@ -11,6 +11,7 @@ use sea_orm::{
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
 use suwen_markdown::manager::Markdown;
+use suwen_markdown::manager::watcher::MarkdownChange;
 use suwen_migration::{Expr, OnConflict};
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};
@@ -476,12 +477,12 @@ pub async fn create_article(
 /// 处理 markdown 变更事件（创建/更新）
 pub async fn handle_markdown_change(
     conn: &DatabaseConnection,
-    change: suwen_markdown::manager::watcher::MarkdownChange,
+    change: MarkdownChange,
     lang: Lang,
     summary_cache: &DashMap<String, Option<String>>,
 ) -> Result<()> {
     match change {
-        suwen_markdown::manager::watcher::MarkdownChange::Upsert(markdown) => {
+        MarkdownChange::Upsert(markdown) => {
             let slug = markdown.slug().to_string();
             // 检查是否已存在
             let existing = content_metadata::Entity::find()
@@ -497,7 +498,7 @@ pub async fn handle_markdown_change(
                 create_article(conn, markdown, lang, summary_cache).await?;
             }
         }
-        suwen_markdown::manager::watcher::MarkdownChange::Deleted(slug) => {
+        MarkdownChange::Deleted(slug) => {
             info!("Deleting article: {}", slug);
             if let Some(metadata) = content_metadata::Entity::find()
                 .filter(content_metadata::Column::Slug.eq(&slug))
@@ -518,7 +519,7 @@ pub async fn handle_markdown_change(
                 content_metadata::Entity::delete_by_id(metadata.id).exec(conn).await?;
             }
         }
-        suwen_markdown::manager::watcher::MarkdownChange::SyncExisting(existing_slugs) => {
+        MarkdownChange::SyncExisting(existing_slugs) => {
             info!("Syncing existing articles, found {} files", existing_slugs.len());
             // 获取数据库中所有的 slug
             let all_db_slugs = content_metadata::Entity::find()
