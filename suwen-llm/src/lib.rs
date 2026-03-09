@@ -2,7 +2,7 @@ use anyhow::Result;
 use llm::builder::{LLMBackend, LLMBuilder};
 use llm::chat::ChatMessage;
 use suwen_config::CONFIG;
-
+use suwen_markdown::Markdown;
 mod utils;
 
 static PROMPT: &str = "
@@ -12,7 +12,10 @@ static PROMPT: &str = "
 请务必遵守所有格式和语气要求，仅输出摘要内容，不得包含任何前言、后记或解释性文字。
 ";
 
-pub async fn generate_article_summary(article: &str) -> Result<Option<String>> {
+pub async fn generate_article_summary(article: &Markdown) -> Result<Option<String>> {
+    if matches!(article, Markdown::Short { .. }) {
+        return Ok(None);
+    }
     let llm = LLMBuilder::new()
         .backend(LLMBackend::DeepSeek)
         .system(PROMPT)
@@ -22,6 +25,10 @@ pub async fn generate_article_summary(article: &str) -> Result<Option<String>> {
         .temperature(1.2)
         .stream(false)
         .build()?;
-    let msgs = vec![ChatMessage::user().content(article).build()];
+    let msgs = vec![
+        ChatMessage::user()
+            .content(format!("标题：{}\n\n内容：\n{}", article.title(), article.content()))
+            .build(),
+    ];
     Ok(llm.chat(&msgs).await?.text().map(|s| utils::standardize_text(&s)))
 }

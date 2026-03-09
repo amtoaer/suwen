@@ -19,6 +19,7 @@ clap = { workspace = true }
 futures = { workspace = true }
 lol_html = { workspace = true }
 mime2ext = { workspace = true }
+notify-debouncer-full = { workspace = true }
 notify = { workspace = true }
 parking_lot = { workspace = true }
 pathdiff = { workspace = true }
@@ -29,9 +30,9 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-twox-hash = "2.1.2"
-hex = "0.4.3"
-tempfile = "3.10"
+twox-hash = { workspace = true }
+hex = { workspace = true }
+tempfile = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }

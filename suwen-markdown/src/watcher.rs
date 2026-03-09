@@ -1,8 +1,3 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::{Context, Result};
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client as S3Client;
@@ -11,18 +6,22 @@ use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use lol_html::{HtmlRewriter, Settings, element};
 use mime2ext::mime2ext;
-use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
+use notify::event::{ModifyKind, RenameMode};
+use notify::{EventKind, RecursiveMode};
+use notify_debouncer_full::{DebouncedEvent, new_debouncer};
 use pulldown_cmark::{Event as MdEvent, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::LazyLock;
+use std::time::Duration;
 use suwen_config::CONFIG;
 use tokio::sync::{Semaphore, mpsc};
-use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
 use crate::{Markdown, parse_markdown};
-
-const DEBOUNCE_DURATION: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MediaType {
@@ -52,6 +51,7 @@ pub struct MarkdownWatcher {
 pub enum MarkdownChange {
     Upsert(Markdown),
     Deleted(String),
+    Renamed(String, String),
     SyncExisting(Vec<String>),
 }
 
@@ -69,91 +69,71 @@ impl MarkdownWatcher {
         }
     }
 
-    /// 开始监听文件变化
     pub async fn start_watching(self) -> Result<()> {
         let (tx, mut rx) = mpsc::unbounded_channel();
 
-        // 初始扫描现有文件
         info!("Initial scan of markdown files in {:?}", self.watch_path);
         self.scan_existing_files().await?;
 
-        // 设置文件监视器
-        let mut watcher = PollWatcher::new(
-            move |res| {
-                if let Ok(event) = res {
+        let mut debouncer = new_debouncer(Duration::from_secs(5), None, move |result| {
+            if let Ok(events) = result {
+                for event in events {
                     let _ = tx.send(event);
                 }
-            },
-            notify::Config::default().with_poll_interval(Duration::from_secs(2)),
-        )?;
-
-        watcher.watch(&self.watch_path, RecursiveMode::NonRecursive)?;
+            }
+        })?;
+        debouncer.watch(&self.watch_path, RecursiveMode::NonRecursive)?;
         info!("Started watching markdown files in {:?}", self.watch_path);
 
-        // 防抖处理
-        let mut pending_files: HashMap<PathBuf, tokio::time::Instant> = HashMap::new();
-
-        loop {
-            tokio::select! {
-                Some(event) = rx.recv() => {
-                    self.handle_event(event, &mut pending_files)?;
-                }
-                _ = sleep(Duration::from_millis(100)) => {
-                    self.process_pending_files(&mut pending_files).await?;
-                }
-            }
+        while let Some(event) = rx.recv().await {
+            info!("Received file system event: {:?}", event);
+            self.handle_event(event).await?;
         }
+        Ok(())
     }
 
-    fn handle_event(&self, event: Event, pending_files: &mut HashMap<PathBuf, tokio::time::Instant>) -> Result<()> {
-        for path in event.paths {
-            if path.extension().is_some_and(|ext| ext == "md") {
-                match event.kind {
-                    EventKind::Create(_) | EventKind::Modify(_) => {
-                        debug!("Markdown file changed: {:?}", path);
-                        pending_files.insert(path, tokio::time::Instant::now());
-                    }
-                    EventKind::Remove(_) => {
-                        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                            info!("Markdown file deleted: {:?}", path);
-                            let _ = self.db_sender.send(MarkdownChange::Deleted(stem.to_string()));
-                        }
-                    }
-                    _ => {}
+    async fn handle_event(&self, event: DebouncedEvent) -> Result<()> {
+        let event = event.event;
+        if event.paths.iter().any(|p| p.extension().is_none_or(|ext| ext != "md")) {
+            return Ok(());
+        }
+        match event.kind {
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
+                let (old_path, new_path) = (&event.paths[0], &event.paths[1]);
+                if let (Some(old_stem), Some(new_stem)) = (
+                    old_path.file_stem().and_then(|s| s.to_str()),
+                    new_path.file_stem().and_then(|s| s.to_str()),
+                ) {
+                    info!("Markdown file renamed from {:?} to {:?}", old_path, new_path);
+                    let _ = self
+                        .db_sender
+                        .send(MarkdownChange::Renamed(old_stem.to_string(), new_stem.to_string()));
                 }
+            }
+            EventKind::Create(_) | EventKind::Modify(_) => {
+                let path = &event.paths[0];
+                debug!("Markdown file changed: {:?}", path);
+                if let Err(e) = self.process_markdown_file(&path).await {
+                    error!("Failed to process markdown file {:?}: {}", path, e);
+                }
+            }
+            EventKind::Remove(_) => {
+                let path = &event.paths[0];
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    info!("Markdown file deleted: {:?}", path);
+                    let _ = self.db_sender.send(MarkdownChange::Deleted(stem.to_string()));
+                }
+            }
+            _ => {
+                info!("Unhandled file system event: {:?}", event.kind);
             }
         }
         Ok(())
     }
 
-    async fn process_pending_files(&self, pending_files: &mut HashMap<PathBuf, tokio::time::Instant>) -> Result<()> {
-        let now = tokio::time::Instant::now();
-        let mut to_process = Vec::new();
-
-        pending_files.retain(|path, &mut last_change| {
-            if now.duration_since(last_change) >= DEBOUNCE_DURATION {
-                to_process.push(path.clone());
-                false
-            } else {
-                true
-            }
-        });
-
-        for path in to_process {
-            if let Err(e) = self.process_markdown_file(&path).await {
-                error!("Failed to process markdown file {:?}: {}", path, e);
-            }
-        }
-
-        Ok(())
-    }
-
-    /// 初始扫描现有文件
     async fn scan_existing_files(&self) -> Result<()> {
         let mut existing_slugs = Vec::new();
         let mut entries = tokio::fs::read_dir(&self.watch_path).await?;
-
-        // 第一步：扫描并处理现有文件，同时收集现有 slug
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "md") {
@@ -165,26 +145,20 @@ impl MarkdownWatcher {
                 }
             }
         }
-
-        // 第二步：发送 SyncExisting 消息，让数据库处理端清理缺失的文件
         let _ = self.db_sender.send(MarkdownChange::SyncExisting(existing_slugs));
-
         Ok(())
     }
 
-    /// 处理单个 markdown 文件
     async fn process_markdown_file(&self, path: &Path) -> Result<()> {
         info!("Processing markdown file: {:?}", path);
         let mut markdown = Markdown::from_file(path, CONFIG.source_lang).await?;
 
-        // 检查 R2 配置是否可用
         let Some(r2_config) = &suwen_config::CONFIG.r2 else {
             warn!("R2 config not found, skipping media upload");
             let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
             return Ok(());
         };
 
-        // 提取媒体资源
         let media_resources = extract_media_from_markdown(&markdown);
         if media_resources.is_empty() {
             debug!("No media resources found in markdown");
@@ -192,27 +166,22 @@ impl MarkdownWatcher {
             return Ok(());
         }
 
-        // 处理媒体资源
         let uploader = MediaUploader::new(r2_config.clone(), &self.object_output);
         let uploaded_media = uploader.process_media(&media_resources, markdown.slug()).await?;
 
-        // 更新 markdown 中的媒体链接
         update_media_links(&mut markdown, &uploaded_media)?;
 
-        // 发送到数据库处理器
         let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
 
         Ok(())
     }
 }
 
-/// 从 markdown 中提取所有媒体资源（图片和视频）
 pub fn extract_media_from_markdown(markdown: &Markdown) -> Vec<MediaResource> {
     let content = markdown.content();
 
     let mut resources = Vec::new();
 
-    // 解析 markdown
     let events = match parse_markdown(content) {
         Ok(events) => events,
         Err(e) => {
@@ -230,7 +199,6 @@ pub fn extract_media_from_markdown(markdown: &Markdown) -> Vec<MediaResource> {
                 });
             }
             MdEvent::Html(html) | MdEvent::InlineHtml(html) => {
-                // 从 HTML 中提取图片和视频
                 resources.extend(extract_media_from_html(&html));
             }
             _ => {}
@@ -240,11 +208,9 @@ pub fn extract_media_from_markdown(markdown: &Markdown) -> Vec<MediaResource> {
     resources
 }
 
-/// 从 HTML 中提取媒体资源
 fn extract_media_from_html(html: &str) -> Vec<MediaResource> {
     let mut resources = Vec::new();
 
-    // 提取视频
     if let Ok(videos) = collect_videos_from_html(html) {
         for url in videos {
             resources.push(MediaResource {
@@ -254,7 +220,6 @@ fn extract_media_from_html(html: &str) -> Vec<MediaResource> {
         }
     }
 
-    // 提取图片（img 标签）
     if let Ok(images) = collect_images_from_html(html) {
         for url in images {
             resources.push(MediaResource {
@@ -267,7 +232,6 @@ fn extract_media_from_html(html: &str) -> Vec<MediaResource> {
     resources
 }
 
-/// 从 HTML 中收集视频链接
 fn collect_videos_from_html(html: &str) -> Result<Vec<String>> {
     let mut videos = Vec::new();
     let mut scanner = HtmlRewriter::new(
@@ -286,7 +250,6 @@ fn collect_videos_from_html(html: &str) -> Result<Vec<String>> {
     Ok(videos)
 }
 
-/// 从 HTML 中收集图片链接
 fn collect_images_from_html(html: &str) -> Result<Vec<String>> {
     let mut images = Vec::new();
     let mut scanner = HtmlRewriter::new(
@@ -305,7 +268,6 @@ fn collect_images_from_html(html: &str) -> Result<Vec<String>> {
     Ok(images)
 }
 
-/// 媒体上传器
 pub struct MediaUploader {
     r2_config: suwen_config::R2Config,
     object_output: PathBuf,
@@ -319,7 +281,6 @@ impl MediaUploader {
         }
     }
 
-    /// 批量处理媒体资源
     pub async fn process_media(&self, media: &[MediaResource], slug: &str) -> Result<Vec<UploadedMedia>> {
         let semaphore = Arc::new(Semaphore::new(8));
         let mut tasks = FuturesUnordered::new();
@@ -351,12 +312,10 @@ impl MediaUploader {
     }
 }
 
-/// 判断是否是可转换的图片类型
 fn is_convertible_image(ext: &str) -> bool {
     matches!(ext.to_lowercase().as_str(), "jpg" | "jpeg" | "png")
 }
 
-/// 将图片转换为 webp 格式
 async fn convert_to_webp(data: &[u8], ext: &str) -> Result<Vec<u8>> {
     let temp_dir = tempfile::tempdir()?;
     let input_path = temp_dir.path().join(format!("input.{}", ext));
@@ -389,7 +348,6 @@ async fn convert_to_webp(data: &[u8], ext: &str) -> Result<Vec<u8>> {
     Ok(webp_data)
 }
 
-/// 处理单个媒体资源
 async fn process_single_media(
     resource: &MediaResource,
     slug: &str,
@@ -397,33 +355,26 @@ async fn process_single_media(
     r2_config: &suwen_config::R2Config,
     object_domain: &str,
 ) -> Result<Option<UploadedMedia>> {
-    // 跳过已经是对象存储域名的链接
     if resource.url.starts_with(object_domain) {
         debug!("Skipping already uploaded media: {}", resource.url);
         return Ok(None);
     }
 
-    // 跳过 dead_link
     if resource.url.starts_with("$dead_link/") {
         debug!("Skipping dead link: {}", resource.url);
         return Ok(None);
     }
 
-    // 只对图片类型进行处理，视频跳过
     if resource.media_type != MediaType::Image {
         debug!("Skipping non-image media: {}", resource.url);
         return Ok(None);
     }
 
-    // 获取原始文件内容
     let (original_data, original_ext) = fetch_media_content(&resource.url, object_output).await?;
 
-    // 计算原始文件的 hash
     let hash = compute_hash(&original_data);
 
-    // 判断是否需要转换
     let (upload_data, upload_ext) = if is_convertible_image(&original_ext) {
-        // 尝试转换为 webp
         match convert_to_webp(&original_data, &original_ext).await {
             Ok(webp_data) => (webp_data, "webp".to_string()),
             Err(e) => {
@@ -435,12 +386,9 @@ async fn process_single_media(
         (original_data, original_ext)
     };
 
-    // 生成文件名（使用原始 hash，但扩展名可能是 webp）
     let filename = format!("{}_{}.{}", slug, hash, upload_ext);
 
-    // 检查 R2 上是否已存在
     if !check_file_exists(r2_config, &filename).await? {
-        // 上传到 R2
         upload_to_r2(r2_config, &filename, &upload_data, &resource.url).await?;
     }
 
@@ -452,7 +400,6 @@ async fn process_single_media(
     }))
 }
 
-/// 获取媒体内容，支持网络和本地文件
 async fn fetch_media_content(url: &str, object_output: &Path) -> Result<(Vec<u8>, String)> {
     if url.starts_with("http://") || url.starts_with("https://") {
         fetch_remote_media(url).await
@@ -461,7 +408,6 @@ async fn fetch_media_content(url: &str, object_output: &Path) -> Result<(Vec<u8>
     }
 }
 
-/// 获取远程媒体内容
 async fn fetch_remote_media(url: &str) -> Result<(Vec<u8>, String)> {
     static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         reqwest::Client::builder()
@@ -483,12 +429,10 @@ async fn fetch_remote_media(url: &str) -> Result<(Vec<u8>, String)> {
     Ok((data, ext.to_string()))
 }
 
-/// 获取本地媒体内容
 async fn fetch_local_media(path: &str, object_output: &Path) -> Result<(Vec<u8>, String)> {
     let local_path = if Path::new(path).is_absolute() {
         PathBuf::from(path)
     } else {
-        // 尝试相对于 object_output 或当前目录
         let try1 = object_output.join(path);
         if try1.exists() { try1 } else { PathBuf::from(path) }
     };
@@ -502,7 +446,6 @@ async fn fetch_local_media(path: &str, object_output: &Path) -> Result<(Vec<u8>,
     Ok((data, ext.to_string()))
 }
 
-/// 计算文件的 SHA256 hash
 fn compute_hash(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -510,7 +453,6 @@ fn compute_hash(data: &[u8]) -> String {
     hex::encode(&result[..16]) // 使用前16字节
 }
 
-/// 检查 R2 上文件是否已存在
 async fn check_file_exists(r2_config: &suwen_config::R2Config, filename: &str) -> Result<bool> {
     let creds = Credentials::new(&r2_config.access_key_id, &r2_config.secret_access_key, None, None, "r2");
 
@@ -540,7 +482,6 @@ async fn check_file_exists(r2_config: &suwen_config::R2Config, filename: &str) -
     }
 }
 
-/// 上传文件到 R2
 async fn upload_to_r2(
     r2_config: &suwen_config::R2Config,
     filename: &str,
@@ -584,7 +525,6 @@ async fn upload_to_r2(
     Ok(())
 }
 
-/// 更新 markdown 中的媒体链接
 pub fn update_media_links(markdown: &mut Markdown, uploaded_media: &[UploadedMedia]) -> Result<()> {
     let url_map: HashMap<_, _> = uploaded_media
         .iter()
@@ -626,7 +566,6 @@ pub fn update_media_links(markdown: &mut Markdown, uploaded_media: &[UploadedMed
     Ok(())
 }
 
-/// 更新 HTML 中的媒体链接
 fn update_html_media_links(html: &str, url_map: &HashMap<String, String>) -> Result<String> {
     let mut buf = Vec::new();
     let mut rewriter = HtmlRewriter::new(
@@ -657,5 +596,3 @@ fn update_html_media_links(html: &str, url_map: &HashMap<String, String>) -> Res
     rewriter.end()?;
     Ok(String::from_utf8_lossy(&buf).to_string())
 }
-
-use std::sync::LazyLock;

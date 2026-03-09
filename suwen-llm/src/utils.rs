@@ -1,9 +1,9 @@
-pub(crate) fn standardize_text(text: &str) -> String {
-    auto_correct(&clear_text(text))
-}
-
 fn auto_correct(text: &str) -> String {
     autocorrect::format_for(text, "markdown").out
+}
+
+pub(crate) fn standardize_text(text: &str) -> String {
+    auto_correct(&clear_text(text))
 }
 
 fn clear_text(text: &str) -> String {

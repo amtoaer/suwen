@@ -46,7 +46,15 @@ pub enum Markdown {
         lang: Lang,
     },
 }
+
 impl Markdown {
+    pub fn content_type(&self) -> &'static str {
+        match self {
+            Markdown::Article { .. } => "article",
+            Markdown::Short { .. } => "gallery",
+        }
+    }
+
     pub fn slug(&self) -> &str {
         match self {
             Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => slug,
@@ -65,17 +73,43 @@ impl Markdown {
         }
     }
 
-    pub fn lang(&self) -> &Lang {
+    pub fn lang(&self) -> Lang {
         match self {
-            Markdown::Article { lang, .. } | Markdown::Short { lang, .. } => lang,
+            Markdown::Article { lang, .. } | Markdown::Short { lang, .. } => *lang,
         }
     }
 
     pub fn tags(&self) -> Vec<String> {
         match self {
             Markdown::Article { tags, .. } => tags.clone(),
-            Markdown::Short { .. } => Vec::new(),
+            Markdown::Short { .. } => vec![],
         }
+    }
+
+    pub fn created_at(&self) -> DateTime<Local> {
+        match self {
+            Markdown::Article { created_at, .. } | Markdown::Short { created_at, .. } => *created_at,
+        }
+    }
+
+    pub fn updated_at(&self) -> DateTime<Local> {
+        match self {
+            Markdown::Article { updated_at, .. } | Markdown::Short { updated_at, .. } => *updated_at,
+        }
+    }
+
+    pub fn published_at(&self) -> DateTime<Local> {
+        match self {
+            Markdown::Article { published_at, .. } | Markdown::Short { published_at, .. } => *published_at,
+        }
+    }
+
+    pub fn hash(&self) -> String {
+        let mut hasher = XxHash3_64::default();
+        hasher.write(self.title().as_bytes());
+        hasher.write(self.content().as_bytes());
+        hasher.write(self.tags().join(",").as_bytes());
+        format!("v1:{:x}/{}", hasher.finish(), self.lang())
     }
 
     pub(super) fn to_string(&self) -> Result<String> {
@@ -220,14 +254,5 @@ impl Markdown {
         let mut buf = String::new();
         html::push_html(&mut buf, highlighted_events.into_iter());
         Ok((Some(toc.into()), Some(buf)))
-    }
-
-    pub fn hash(&self) -> String {
-        let mut hasher = XxHash3_64::default();
-        hasher.write(self.title().as_bytes());
-        hasher.write(self.content().as_bytes());
-        let hash = hasher.finish();
-
-        format!("v1:{:x}/{}", hash, self.lang())
     }
 }
