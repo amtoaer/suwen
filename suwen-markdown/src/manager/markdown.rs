@@ -7,7 +7,6 @@ use lol_html::{HtmlRewriter, Settings, element};
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use suwen_entity::{Toc, TocItem};
 
 use crate::highlighter::Highlighter;
@@ -253,56 +252,5 @@ impl Markdown {
         let mut buf = String::new();
         html::push_html(&mut buf, highlighted_events.into_iter());
         Ok((Some(toc.into()), Some(buf)))
-    }
-
-    /// 计算 Markdown 内容的 hash，用于检测内容是否变化
-    pub fn content_hash(&self) -> Result<String> {
-        // 将 Markdown 序列化为稳定的字符串格式
-        let stable_representation = match self {
-            Markdown::Article {
-                slug,
-                title,
-                tags,
-                content,
-                created_at,
-                updated_at,
-                published_at,
-            } => {
-                format!(
-                    "article|{}|{}|{}|{}|{}|{}|{}",
-                    slug,
-                    title,
-                    tags.join(","),
-                    content,
-                    created_at.to_rfc3339(),
-                    updated_at.to_rfc3339(),
-                    published_at.to_rfc3339()
-                )
-            }
-            Markdown::Short {
-                slug,
-                title,
-                content,
-                created_at,
-                updated_at,
-                published_at,
-            } => {
-                format!(
-                    "short|{}|{}|{}|{}|{}|{}",
-                    slug,
-                    title,
-                    content,
-                    created_at.to_rfc3339(),
-                    updated_at.to_rfc3339(),
-                    published_at.to_rfc3339()
-                )
-            }
-        };
-
-        // 计算 SHA256 hash
-        let mut hasher = Sha256::new();
-        hasher.update(stable_representation.as_bytes());
-        let hash = hasher.finalize();
-        Ok(hex::encode(&hash[..16]))
     }
 }
