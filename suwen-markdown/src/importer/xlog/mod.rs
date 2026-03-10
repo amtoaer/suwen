@@ -41,29 +41,20 @@ pub async fn import_file(file: PathBuf, output: PathBuf, obj_output: PathBuf) ->
 async fn handle_short(content: Content, slug: String, output: &Path, obj_output: &Path) -> Result<Markdown> {
     let cover_images = init_cover_images(&content, &slug, output, obj_output).await;
 
-    let images_markdown = cover_images
-        .iter()
-        .map(|img| format!("![cover]({})\n", img))
-        .collect::<String>();
-
-    let full_content = if images_markdown.is_empty() {
-        content.metadata.content.content
-    } else {
-        format!("{}\n{}", images_markdown, content.metadata.content.content)
-    };
-
     Ok(Markdown::Short {
         slug,
+        cover_images: Some(cover_images),
         title: content.metadata.content.title,
-        content: full_content,
+        content: content.metadata.content.content,
         lang: CONFIG.source_lang,
-        created_at: content.created_at,
-        updated_at: content.updated_at,
-        published_at: content.published_at,
+        created_at: Some(content.created_at),
+        updated_at: Some(content.updated_at),
+        published_at: Some(content.published_at),
     })
 }
 
 async fn handle_post(content: Content, slug: String, output: &Path, obj_output: &Path) -> Result<Markdown> {
+    let cover_images = init_cover_images(&content, &slug, output, obj_output).await;
     let parts: Vec<&str> = content.metadata.content.content.splitn(3, "---").collect();
     let content_text = if parts.len() == 3 && YamlLoader::load_from_str(parts[1]).is_ok() {
         Cow::Owned(String::from(parts[0]) + parts[2])
@@ -131,13 +122,14 @@ async fn handle_post(content: Content, slug: String, output: &Path, obj_output: 
     cmark_resume(filtered_events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
     Ok(Markdown::Article {
         slug,
+        cover_images: Some(cover_images),
         title: content.metadata.content.title,
         content: buf,
         lang: CONFIG.source_lang,
         tags: content.metadata.content.tags.into_iter().skip(1).collect(),
-        created_at: content.created_at,
-        updated_at: content.updated_at,
-        published_at: content.published_at,
+        created_at: Some(content.created_at),
+        updated_at: Some(content.updated_at),
+        published_at: Some(content.published_at),
     })
 }
 

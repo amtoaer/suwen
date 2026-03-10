@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result, bail, ensure};
 use chrono::Datelike;
-use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::{NotSet, Set};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
     RelationTrait, TransactionTrait,
@@ -351,21 +351,22 @@ pub async fn handle_markdown_change(conn: &DatabaseConnection, change: MarkdownC
     let txn = conn.begin().await?;
     match change {
         MarkdownChange::Upsert(markdown) => {
-            let slug = markdown.slug();
+            let slug = markdown.slug().to_owned();
             match content_metadata::Entity::find()
-                .filter(content_metadata::Column::Slug.eq(slug))
+                .filter(content_metadata::Column::Slug.eq(&slug))
                 .one(&txn)
                 .await?
             {
                 Some(metadata) => {
-                    info!("Article already exists, updating: {}", slug);
+                    info!("Article already exists, updating: {}", &slug);
                     update_article(markdown, metadata, &txn).await?;
                 }
                 None => {
-                    info!("Article does not exist, creating: {}", slug);
+                    info!("Article does not exist, creating: {}", &slug);
                     create_article(markdown, &txn).await?;
                 }
             }
+            info!("Article upserted: {}", &slug);
         }
         MarkdownChange::Deleted(slug) => {
             info!("Deleting article: {}", slug);
@@ -410,9 +411,9 @@ pub async fn create_article(mut markdown: Markdown, conn: &impl ConnectionTrait)
         tags: Set(markdown.tags().into()),
         view_count: Set(0),
         comment_count: Set(0),
-        created_at: Set(markdown.created_at()),
-        updated_at: Set(markdown.updated_at()),
-        published_at: Set(Some(markdown.published_at())),
+        created_at: markdown.created_at().map(|dt| Set(dt)).unwrap_or(NotSet),
+        updated_at: markdown.updated_at().map(|dt| Set(dt)).unwrap_or(NotSet),
+        published_at: markdown.published_at().map(|dt| Set(Some(dt))).unwrap_or(NotSet),
         original_lang: Set(markdown.lang().to_string()),
         ..Default::default()
     };

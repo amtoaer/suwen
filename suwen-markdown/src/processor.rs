@@ -129,7 +129,7 @@ impl MarkdownProcessor {
             };
             let data = tokio::fs::read(&local_path)
                 .await
-                .context("Failed to read media file")?;
+                .with_context(|| format!("Failed to read local media file: {:?}", local_path))?;
             let ext = local_path
                 .extension()
                 .and_then(|s| s.to_str())

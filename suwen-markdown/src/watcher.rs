@@ -45,7 +45,7 @@ impl MarkdownWatcher {
         info!("Started watching markdown files in {:?}", self.watch_path);
 
         while let Some(event) = rx.recv().await {
-            info!("Received file system event: {:?}", event);
+            debug!("Received file system event: {:?}", event);
             self.handle_event(event).await?;
         }
         Ok(())
@@ -71,7 +71,6 @@ impl MarkdownWatcher {
             }
             EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
                 let path = &event.paths[0];
-                debug!("Markdown file changed: {:?}", path);
                 match MarkdownProcessor::get().await.process_file(path).await {
                     Ok(markdown) => {
                         let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
@@ -84,12 +83,11 @@ impl MarkdownWatcher {
             EventKind::Remove(_) => {
                 let path = &event.paths[0];
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    info!("Markdown file deleted: {:?}", path);
                     let _ = self.db_sender.send(MarkdownChange::Deleted(stem.to_string()));
                 }
             }
             _ => {
-                info!("Unhandled file system event: {:?}", event.kind);
+                debug!("Unhandled file system event: {:?}", event.kind);
             }
         }
         Ok(())

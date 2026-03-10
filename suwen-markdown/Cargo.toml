@@ -16,6 +16,7 @@ aws-sdk-s3 = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
+itertools = { workspace = true }
 lol_html = { workspace = true }
 mime_guess = { workspace = true }
 notify-debouncer-full = { workspace = true }

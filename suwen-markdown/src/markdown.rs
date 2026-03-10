@@ -7,6 +7,7 @@ use std::sync::LazyLock;
 
 use anyhow::{Context, Result, anyhow, bail};
 use chrono::{DateTime, Local};
+use itertools::Itertools;
 use lol_html::{HtmlRewriter, Settings, element};
 use parking_lot::Mutex;
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
@@ -29,11 +30,12 @@ pub enum Markdown {
         slug: String,
         title: String,
         tags: Vec<String>,
+        cover_images: Option<Vec<String>>,
         #[serde(skip)]
         content: String,
-        created_at: DateTime<Local>,
-        updated_at: DateTime<Local>,
-        published_at: DateTime<Local>,
+        created_at: Option<DateTime<Local>>,
+        updated_at: Option<DateTime<Local>>,
+        published_at: Option<DateTime<Local>>,
         #[serde(skip)]
         lang: Lang,
     },
@@ -41,16 +43,18 @@ pub enum Markdown {
         #[serde(default)]
         slug: String,
         title: String,
+        cover_images: Option<Vec<String>>,
         #[serde(skip)]
         content: String,
-        created_at: DateTime<Local>,
-        updated_at: DateTime<Local>,
-        published_at: DateTime<Local>,
+        created_at: Option<DateTime<Local>>,
+        updated_at: Option<DateTime<Local>>,
+        published_at: Option<DateTime<Local>>,
         #[serde(skip)]
         lang: Lang,
     },
 }
 
+#[derive(Eq, PartialEq, Hash, Clone)]
 pub enum MediaResource {
     Image(String),
     Video(String),
@@ -103,21 +107,33 @@ impl Markdown {
         }
     }
 
-    pub fn created_at(&self) -> DateTime<Local> {
+    pub fn created_at(&self) -> Option<DateTime<Local>> {
         match self {
             Markdown::Article { created_at, .. } | Markdown::Short { created_at, .. } => *created_at,
         }
     }
 
-    pub fn updated_at(&self) -> DateTime<Local> {
+    pub fn updated_at(&self) -> Option<DateTime<Local>> {
         match self {
             Markdown::Article { updated_at, .. } | Markdown::Short { updated_at, .. } => *updated_at,
         }
     }
 
-    pub fn published_at(&self) -> DateTime<Local> {
+    pub fn published_at(&self) -> Option<DateTime<Local>> {
         match self {
             Markdown::Article { published_at, .. } | Markdown::Short { published_at, .. } => *published_at,
+        }
+    }
+
+    fn cover_images(&self) -> Option<Vec<String>> {
+        match self {
+            Markdown::Article { cover_images, .. } | Markdown::Short { cover_images, .. } => cover_images.clone(),
+        }
+    }
+
+    fn cover_images_ref(&mut self) -> &mut Option<Vec<String>> {
+        match self {
+            Markdown::Article { cover_images, .. } | Markdown::Short { cover_images, .. } => cover_images,
         }
     }
 
@@ -177,19 +193,23 @@ impl Markdown {
     }
 
     pub fn extract_images(&self) -> Result<Vec<String>> {
+        let mut images = self.cover_images().unwrap_or_default();
         let events = parse_markdown(self.content())?;
-        let mut images = Vec::new();
         for event in events {
             if let Event::Start(Tag::Image { dest_url, .. }) = event {
                 images.push(dest_url.to_string());
             }
         }
-        Ok(images)
+        Ok(images.into_iter().unique().collect())
     }
 
     pub fn extract_resources(&self) -> Result<Vec<MediaResource>> {
         let events = parse_markdown(self.content())?;
-        let resources = Rc::new(RefCell::new(Vec::new()));
+        let resources = Rc::new(RefCell::new(
+            self.cover_images()
+                .map(|imgs| imgs.into_iter().map(MediaResource::Image).collect::<Vec<_>>())
+                .unwrap_or_default(),
+        ));
         for event in events {
             match event {
                 Event::Start(Tag::Image { dest_url, .. }) => {
@@ -226,7 +246,10 @@ impl Markdown {
         }
         Ok(Rc::try_unwrap(resources)
             .map_err(|_| anyhow!("failed to get resources"))?
-            .into_inner())
+            .into_inner()
+            .into_iter()
+            .unique()
+            .collect())
     }
 
     pub fn update_by_uploaded_resource(&mut self, uploaded_media: Vec<UploadedMedia>) -> Result<()> {
@@ -237,6 +260,13 @@ impl Markdown {
             .into_iter()
             .map(|m| (m.original_url, m.new_url))
             .collect::<HashMap<_, _>>();
+        if let Some(cover_images) = self.cover_images_ref() {
+            for img in cover_images.iter_mut() {
+                if let Some(new_url) = uploaded_media.get(img.as_str()) {
+                    *img = new_url.clone();
+                }
+            }
+        }
         let mut events = parse_markdown(self.content())?;
         let mut need_update = false;
         for event in events.iter_mut() {
