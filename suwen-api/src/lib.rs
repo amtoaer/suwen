@@ -61,7 +61,7 @@ async fn sitemap_handler(
     Query(query): Query<UrlQuery>,
     Extension(conn): Extension<DatabaseConnection>,
 ) -> impl IntoResponse {
-    let base_url = CONFIG.host_url.clone().unwrap_or_else(|| "https://amto.cc".to_owned());
+    let base_url = CONFIG.host_url.clone();
     let lang = query.lang.unwrap_or(db::Lang::ZhCN);
     let Ok(articles) = db::get_sitemap_articles(&conn, lang).await else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch data").into_response();

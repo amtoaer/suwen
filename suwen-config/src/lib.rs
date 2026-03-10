@@ -19,27 +19,26 @@ fn random_string(length: usize) -> String {
 pub struct Config {
     pub jwt_secret: String,
     pub openai_api_key: String,
-    #[serde(default)]
-    pub host_url: Option<String>,
-    #[serde(default)]
-    pub r2: Option<R2Config>,
-    #[serde(default = "default_object_storage_domain")]
-    pub object_storage_domain: String,
+    pub host_url: String,
+    pub r2: R2Config,
     #[serde(default)]
     pub markdown_path: Option<String>,
     #[serde(default)]
     pub source_lang: Lang,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct R2Config {
+    pub bucket_name: String,
     pub account_id: String,
     pub access_key_id: String,
-    pub secret_access_key: String,
-    pub bucket_name: String,
+    pub access_key_secret: String,
+    pub prefix: String,
+    #[serde(default = "default_s3_domain")]
+    pub s3_domain: String,
 }
 
-fn default_object_storage_domain() -> String {
+fn default_s3_domain() -> String {
     "https://obj.amto.cc".to_string()
 }
 
@@ -82,9 +81,8 @@ impl Default for Config {
         Self {
             jwt_secret: random_string(32),
             openai_api_key: String::new(),
-            host_url: None,
-            r2: None,
-            object_storage_domain: default_object_storage_domain(),
+            host_url: String::new(),
+            r2: R2Config::default(),
             markdown_path: None,
             source_lang: Default::default(),
         }

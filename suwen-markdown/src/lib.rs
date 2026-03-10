@@ -4,10 +4,12 @@ extern crate tracing;
 pub mod importer;
 
 pub use markdown::Markdown;
+pub use processor::{MarkdownProcessor, UploadedMedia};
 pub use watcher::{MarkdownChange, MarkdownWatcher};
 
 mod highlighter;
 mod markdown;
+mod processor;
 mod watcher;
 
 use std::fs::create_dir_all;

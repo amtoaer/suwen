@@ -9,7 +9,6 @@ use anyhow::{Context, Error, Result, bail};
 use futures::stream::FuturesUnordered;
 use futures::{StreamExt, TryStreamExt};
 use lol_html::{HtmlRewriter, Settings, element};
-use mime2ext::mime2ext;
 use pathdiff::diff_paths;
 use pulldown_cmark::{Event, Tag};
 use pulldown_cmark_to_cmark::cmark_resume;
@@ -254,7 +253,9 @@ async fn download(url: &str, target: &Path) -> Result<PathBuf> {
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|h| h.to_str().ok())
-        .and_then(|s| mime2ext(s))
+        .and_then(mime_guess::get_mime_extensions_str)
+        .and_then(|exts| exts.first())
+        .copied()
         .context("Failed to parse mime type")?;
     let download_file = target.with_extension(extension);
     let mut file = File::create(&download_file).await.context("Failed to create file")?;

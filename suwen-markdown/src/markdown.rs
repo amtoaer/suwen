@@ -1,9 +1,13 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::hash::Hasher;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::LazyLock;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use chrono::{DateTime, Local};
+use lol_html::{HtmlRewriter, Settings, element};
 use parking_lot::Mutex;
 use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd, html};
 use pulldown_cmark_to_cmark::cmark_resume;
@@ -13,7 +17,7 @@ use suwen_entity::{Toc, TocItem};
 use twox_hash::XxHash3_64;
 
 use crate::highlighter::Highlighter;
-use crate::parse_markdown;
+use crate::{UploadedMedia, parse_markdown};
 
 static HIGHLIGHTER: LazyLock<Mutex<Highlighter>> = LazyLock::new(|| Mutex::new(Highlighter::new()));
 
@@ -45,6 +49,19 @@ pub enum Markdown {
         #[serde(skip)]
         lang: Lang,
     },
+}
+
+pub enum MediaResource {
+    Image(String),
+    Video(String),
+}
+
+impl MediaResource {
+    pub fn url(&self) -> &str {
+        match self {
+            MediaResource::Image(url) | MediaResource::Video(url) => url,
+        }
+    }
 }
 
 impl Markdown {
@@ -160,14 +177,120 @@ impl Markdown {
     }
 
     pub fn extract_images(&self) -> Result<Vec<String>> {
-        let mut images = Vec::new();
         let events = parse_markdown(self.content())?;
+        let mut images = Vec::new();
         for event in events {
             if let Event::Start(Tag::Image { dest_url, .. }) = event {
                 images.push(dest_url.to_string());
             }
         }
         Ok(images)
+    }
+
+    pub fn extract_resources(&self) -> Result<Vec<MediaResource>> {
+        let events = parse_markdown(self.content())?;
+        let resources = Rc::new(RefCell::new(Vec::new()));
+        for event in events {
+            match event {
+                Event::Start(Tag::Image { dest_url, .. }) => {
+                    resources.borrow_mut().push(MediaResource::Image(dest_url.to_string()));
+                }
+                Event::Html(html) | Event::InlineHtml(html) => {
+                    let video_resources = resources.clone();
+                    let img_resources = resources.clone();
+                    let mut scanner = HtmlRewriter::new(
+                        Settings {
+                            element_content_handlers: vec![
+                                element!("source[src]", move |el| {
+                                    if let Some(src) = el.get_attribute("src") {
+                                        video_resources.borrow_mut().push(MediaResource::Video(src.to_string()));
+                                    }
+                                    Ok(())
+                                }),
+                                element!("img[src]", move |el| {
+                                    if let Some(src) = el.get_attribute("src") {
+                                        img_resources.borrow_mut().push(MediaResource::Image(src.to_string()));
+                                    }
+                                    Ok(())
+                                }),
+                            ],
+                            ..Settings::new()
+                        },
+                        |_: &[u8]| {},
+                    );
+                    scanner.write(html.as_bytes())?;
+                    scanner.end()?;
+                }
+                _ => {}
+            }
+        }
+        Ok(Rc::try_unwrap(resources)
+            .map_err(|_| anyhow!("failed to get resources"))?
+            .into_inner())
+    }
+
+    pub fn update_by_uploaded_resource(&mut self, uploaded_media: Vec<UploadedMedia>) -> Result<()> {
+        if uploaded_media.is_empty() {
+            return Ok(());
+        }
+        let uploaded_media = uploaded_media
+            .into_iter()
+            .map(|m| (m.original_url, m.new_url))
+            .collect::<HashMap<_, _>>();
+        let mut events = parse_markdown(self.content())?;
+        let mut need_update = false;
+        for event in events.iter_mut() {
+            match event {
+                Event::Start(Tag::Image { dest_url, .. }) => {
+                    if let Some(new_url) = uploaded_media.get(dest_url.as_ref()) {
+                        *dest_url = new_url.clone().into();
+                        need_update = true;
+                    }
+                }
+                Event::Html(html) | Event::InlineHtml(html) => {
+                    let mut buf = Vec::new();
+                    let mut rewriter = HtmlRewriter::new(
+                        Settings {
+                            element_content_handlers: vec![
+                                element!("img[src]", |el| {
+                                    if let Some(src) = el.get_attribute("src")
+                                        && let Some(new_url) = uploaded_media.get(&src)
+                                    {
+                                        el.set_attribute("src", new_url)?;
+                                    }
+                                    Ok(())
+                                }),
+                                element!("source[src]", |el| {
+                                    if let Some(src) = el.get_attribute("src")
+                                        && let Some(new_url) = uploaded_media.get(&src)
+                                    {
+                                        el.set_attribute("src", new_url)?;
+                                    }
+                                    Ok(())
+                                }),
+                            ],
+                            ..Settings::new()
+                        },
+                        |c: &[u8]| buf.extend_from_slice(c),
+                    );
+                    rewriter.write(html.as_bytes())?;
+                    rewriter.end()?;
+                    *html = String::from_utf8(buf)?.into();
+                    need_update = true;
+                }
+                _ => {}
+            }
+        }
+        if need_update {
+            let mut buf = String::new();
+            cmark_resume(events.into_iter(), &mut buf, None).context("Failed to resume cmark")?;
+            match self {
+                Markdown::Article { content, .. } | Markdown::Short { content, .. } => {
+                    *content = buf;
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn strip_images(&mut self) -> Result<()> {
