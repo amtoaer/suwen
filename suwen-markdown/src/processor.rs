@@ -95,11 +95,11 @@ impl MarkdownProcessor {
     async fn upload_media(&self, slug: &str, media: MediaResource, base_dir: &Path) -> Result<Option<UploadedMedia>> {
         let media_url = media.url();
         if media_url.starts_with(self.s3_domain) {
-            dbg!("Media already uploaded to S3, skipping: {}", media_url);
+            debug!("Media already uploaded to S3, skipping: {}", media_url);
             return Ok(None);
         }
         if media_url.starts_with("$dead_link") {
-            dbg!("Media is a dead link, skipping: {}", media_url);
+            debug!("Media is a dead link, skipping: {}", media_url);
             return Ok(None);
         }
         let (data, ext) = if media_url.starts_with("http://") || media_url.starts_with("https://") {
@@ -150,7 +150,7 @@ impl MarkdownProcessor {
         };
         let key = format!("{}/{}/{}.{}", self.prefix, slug, hash, ext);
         if self.file_exists(&key).await? {
-            dbg!("File already exists in S3, skipping upload: {}", &key);
+            debug!("File already exists in S3, skipping upload: {}", &key);
             Ok(Some(UploadedMedia {
                 original_url: media_url.to_owned(),
                 new_url: format!("{}/{}", self.s3_domain, key),

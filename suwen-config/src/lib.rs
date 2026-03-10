@@ -18,7 +18,9 @@ fn random_string(length: usize) -> String {
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub jwt_secret: String,
+    pub openai_base_url: Option<String>,
     pub openai_api_key: String,
+    pub openai_model: String,
     pub host_url: String,
     pub r2: R2Config,
     #[serde(default)]
@@ -81,6 +83,8 @@ impl Default for Config {
         Self {
             jwt_secret: random_string(32),
             openai_api_key: String::new(),
+            openai_base_url: None,
+            openai_model: String::new(),
             host_url: String::new(),
             r2: R2Config::default(),
             markdown_path: None,

@@ -143,7 +143,7 @@ impl Markdown {
         if parts.len() != 3 {
             bail!("Invalid markdown format: missing metadata or content");
         }
-        let mut metadata: Markdown = serde_json::from_str(parts[1])?;
+        let mut metadata: Markdown = serde_json::from_str(parts[1]).or_else(|_| serde_yaml::from_str(parts[1]))?;
         let article = parts[2].to_string();
         match &mut metadata {
             Markdown::Article {

@@ -16,18 +16,25 @@ pub async fn generate_article_summary(article: &Markdown) -> Result<Option<Strin
     if matches!(article, Markdown::Short { .. }) {
         return Ok(None);
     }
-    let llm = LLMBuilder::new()
-        .backend(LLMBackend::DeepSeek)
+    let mut llm = LLMBuilder::new()
+        .backend(LLMBackend::OpenAI)
         .system(PROMPT)
         .api_key(&CONFIG.openai_api_key)
-        .model("deepseek-chat")
+        .model(&CONFIG.openai_model)
         .timeout_seconds(60)
-        .temperature(1.2)
-        .stream(false)
-        .build()?;
+        .temperature(1.2);
+    if let Some(base_url) = &CONFIG.openai_base_url {
+        llm = llm.base_url(base_url);
+    }
+    let llm = llm.build()?;
     let msgs = vec![
         ChatMessage::user()
-            .content(format!("标题：{}\n\n内容：\n{}", article.title(), article.content()))
+            .content(format!(
+                "标题：{}\n\n标签：{}\n\n内容：\n{}",
+                article.title(),
+                article.tags().join(", "),
+                article.content()
+            ))
             .build(),
     ];
     Ok(llm.chat(&msgs).await?.text().map(|s| utils::standardize_text(&s)))

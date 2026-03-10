@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
-use notify::event::{ModifyKind, RenameMode};
+use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use notify::{EventKind, RecursiveMode};
 use notify_debouncer_full::{DebouncedEvent, new_debouncer};
 use tokio::sync::mpsc;
@@ -34,7 +34,7 @@ impl MarkdownWatcher {
         info!("Initial scan of markdown files in {:?}", self.watch_path);
         self.scan_existing_files().await?;
 
-        let mut debouncer = new_debouncer(Duration::from_secs(5), None, move |result| {
+        let mut debouncer = new_debouncer(Duration::from_secs(2), None, move |result| {
             if let Ok(events) = result {
                 for event in events {
                     let _ = tx.send(event);
@@ -69,7 +69,7 @@ impl MarkdownWatcher {
                         .send(MarkdownChange::Renamed(old_stem.to_string(), new_stem.to_string()));
                 }
             }
-            EventKind::Create(_) | EventKind::Modify(_) => {
+            EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
                 let path = &event.paths[0];
                 debug!("Markdown file changed: {:?}", path);
                 match MarkdownProcessor::get().await.process_file(path).await {
