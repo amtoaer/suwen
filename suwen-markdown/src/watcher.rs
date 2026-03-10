@@ -1,18 +1,14 @@
 use std::path::PathBuf;
-
 use std::time::Duration;
 
 use anyhow::Result;
-
 use notify::event::{ModifyKind, RenameMode};
 use notify::{EventKind, RecursiveMode};
 use notify_debouncer_full::{DebouncedEvent, new_debouncer};
-
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-use crate::Markdown;
-use crate::MarkdownProcessor;
+use crate::{Markdown, MarkdownProcessor};
 
 pub struct MarkdownWatcher {
     watch_path: PathBuf,

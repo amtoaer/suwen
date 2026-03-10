@@ -1,17 +1,19 @@
-use std::{hash::Hasher, path::Path, sync::LazyLock};
+use std::hash::Hasher;
+use std::path::Path;
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result, bail};
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::error::SdkError;
-use futures::{TryStreamExt, stream::FuturesUnordered};
+use futures::TryStreamExt;
+use futures::stream::FuturesUnordered;
 use suwen_config::CONFIG;
-use tokio::{
-    io::AsyncWriteExt,
-    sync::{OnceCell, Semaphore},
-};
+use tokio::io::AsyncWriteExt;
+use tokio::sync::{OnceCell, Semaphore};
 use twox_hash::XxHash3_64;
 
-use crate::{Markdown, markdown::MediaResource};
+use crate::Markdown;
+use crate::markdown::MediaResource;
 
 pub struct MarkdownProcessor {
     s3_client: aws_sdk_s3::Client,
