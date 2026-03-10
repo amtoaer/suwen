@@ -348,38 +348,62 @@ pub async fn get_articles_by_tag(
 }
 
 pub async fn handle_markdown_change(conn: &DatabaseConnection, change: MarkdownChange) -> Result<()> {
-    let txn = conn.begin().await?;
     match change {
-        MarkdownChange::Upsert(markdown) => {
+        MarkdownChange::Upsert(mut markdown) => {
             let slug = markdown.slug().to_owned();
-            match content_metadata::Entity::find()
+            let cover_images = markdown.extract_images()?;
+            markdown.strip_images()?;
+            markdown.auto_format()?;
+            let content_hash = markdown.hash();
+            let existing = content_metadata::Entity::find()
                 .filter(content_metadata::Column::Slug.eq(&slug))
-                .one(&txn)
-                .await?
+                .one(conn)
+                .await?;
+            if let Some(metadata) = &existing
+                && content_hash == metadata.content_hash
             {
+                info!("Content hash unchanged, skipping update: {}", &slug);
+                return Ok(());
+            }
+            let summary = generate_article_summary(&markdown).await?;
+            let (toc, rendered_html) = markdown.render_to_html()?;
+            let txn = conn.begin().await?;
+            match existing {
                 Some(metadata) => {
                     info!("Article already exists, updating: {}", &slug);
-                    update_article(markdown, metadata, &txn).await?;
+                    update_article_internal(
+                        markdown,
+                        metadata,
+                        cover_images,
+                        summary,
+                        toc,
+                        rendered_html,
+                        content_hash,
+                        &txn,
+                    )
+                    .await?;
                 }
                 None => {
                     info!("Article does not exist, creating: {}", &slug);
-                    create_article(markdown, &txn).await?;
+                    create_article_internal(markdown, cover_images, summary, toc, rendered_html, content_hash, &txn)
+                        .await?;
                 }
             }
+            txn.commit().await?;
             info!("Article upserted: {}", &slug);
         }
         MarkdownChange::Deleted(slug) => {
             info!("Deleting article: {}", slug);
             content_metadata::Entity::delete_many()
                 .filter(content_metadata::Column::Slug.eq(&slug))
-                .exec(&txn)
+                .exec(conn)
                 .await?;
         }
         MarkdownChange::SyncExisting(existing_slugs) => {
             info!("Syncing existing articles, found {} files", existing_slugs.len());
             content_metadata::Entity::delete_many()
                 .filter(content_metadata::Column::Slug.is_not_in(existing_slugs))
-                .exec(&txn)
+                .exec(conn)
                 .await?;
         }
         MarkdownChange::Renamed(old_slug, new_slug) => {
@@ -387,32 +411,32 @@ pub async fn handle_markdown_change(conn: &DatabaseConnection, change: MarkdownC
             content_metadata::Entity::update_many()
                 .filter(content_metadata::Column::Slug.eq(&old_slug))
                 .col_expr(content_metadata::Column::Slug, Expr::value(new_slug))
-                .exec(&txn)
+                .exec(conn)
                 .await?;
         }
     }
-    Ok(txn.commit().await?)
+    Ok(())
 }
 
-pub async fn create_article(mut markdown: Markdown, conn: &impl ConnectionTrait) -> Result<()> {
-    let cover_images = markdown.extract_images()?;
-
-    markdown.strip_images()?;
-    markdown.auto_format()?;
-
-    let summary = generate_article_summary(&markdown).await?;
-    let (toc, rendered_html) = markdown.render_to_html()?;
-
+async fn create_article_internal(
+    markdown: Markdown,
+    cover_images: Vec<String>,
+    summary: Option<String>,
+    toc: Option<suwen_entity::Toc>,
+    rendered_html: Option<String>,
+    content_hash: String,
+    conn: &impl ConnectionTrait,
+) -> Result<()> {
     let metadata = content_metadata::ActiveModel {
         slug: Set(markdown.slug().to_owned()),
-        content_hash: Set(markdown.hash()),
+        content_hash: Set(content_hash),
         content_type: Set(markdown.content_type().to_owned()),
         cover_images: Set(cover_images.into()),
         tags: Set(markdown.tags().into()),
         view_count: Set(0),
         comment_count: Set(0),
-        created_at: markdown.created_at().map(|dt| Set(dt)).unwrap_or(NotSet),
-        updated_at: markdown.updated_at().map(|dt| Set(dt)).unwrap_or(NotSet),
+        created_at: markdown.created_at().map(Set).unwrap_or(NotSet),
+        updated_at: markdown.updated_at().map(Set).unwrap_or(NotSet),
         published_at: markdown.published_at().map(|dt| Set(Some(dt))).unwrap_or(NotSet),
         original_lang: Set(markdown.lang().to_string()),
         ..Default::default()
@@ -450,26 +474,20 @@ pub async fn create_article(mut markdown: Markdown, conn: &impl ConnectionTrait)
     Ok(())
 }
 
-pub async fn update_article(
-    mut markdown: Markdown,
+#[allow(clippy::too_many_arguments)]
+async fn update_article_internal(
+    markdown: Markdown,
     metadata: content_metadata::Model,
+    cover_images: Vec<String>,
+    summary: Option<String>,
+    toc: Option<suwen_entity::Toc>,
+    rendered_html: Option<String>,
+    content_hash: String,
     conn: &impl ConnectionTrait,
 ) -> Result<()> {
-    let cover_images = markdown.extract_images()?;
-
-    markdown.strip_images()?;
-    markdown.auto_format()?;
-
-    if markdown.hash() == metadata.content_hash {
-        info!("Content hash unchanged, skipping update: {}", markdown.slug());
-        return Ok(());
-    }
-    let summary = generate_article_summary(&markdown).await?;
-    let (toc, rendered_html) = markdown.render_to_html()?;
-
     let metadata_id = metadata.id;
     let metadata = content_metadata::ActiveModel {
-        content_hash: Set(markdown.hash()),
+        content_hash: Set(content_hash),
         content_type: Set(markdown.content_type().to_owned()),
         cover_images: Set(cover_images.into()),
         tags: Set(markdown.tags().into()),
