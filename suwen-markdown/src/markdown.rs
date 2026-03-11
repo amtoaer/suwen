@@ -362,9 +362,6 @@ impl Markdown {
     }
 
     pub fn render_to_html(&self) -> Result<(Option<Toc>, Option<String>)> {
-        if matches!(self, Markdown::Short { .. }) {
-            return Ok((None, None));
-        }
         let mut events = parse_markdown(self.content())?;
         let mut toc_item = TocItem {
             id: String::new(),

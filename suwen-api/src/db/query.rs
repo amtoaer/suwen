@@ -191,6 +191,7 @@ pub async fn get_shorts(
         .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
+        .column_as(content::Column::RenderedHtml, "rendered_html")
         .inner_join(content::Entity)
         .filter(
             content_metadata::Column::ContentType
@@ -217,6 +218,7 @@ pub async fn get_short_by_slug(conn: &DatabaseConnection, slug: &str, lang: Lang
         .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
+        .column_as(content::Column::RenderedHtml, "rendered_html")
         .inner_join(content::Entity)
         .filter(
             content_metadata::Column::ContentType

@@ -55,6 +55,7 @@ export interface Short {
 	title: string;
 	coverImages: string[];
 	content: string;
+	renderedHtml: string | null;
 }
 
 export interface TagWithCount {
