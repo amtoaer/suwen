@@ -464,3 +464,22 @@ body .medium-zoom-image--opened {
 .markdown-alert-caution {
 	border-left-color: #cf222e;
 }
+
+.prose blockquote {
+	font-style: normal;
+	quotes: none;
+}
+
+.prose blockquote:not([class*='markdown-alert']) {
+	color: var(--muted-foreground);
+}
+
+.prose blockquote:not([class*='markdown-alert']) a {
+	color: var(--muted-foreground);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.prose :where(code):not(:where([class~='not-prose'] *)) {
+	font-weight: normal;
+}
