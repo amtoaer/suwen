@@ -14,7 +14,7 @@
 </script>
 
 <div class="flex gap-4 mb-6">
-	{#each sortTabs as tab}
+	{#each sortTabs as tab (tab.query)}
 		<a
 			href={`${buildUrl(tab.query)}`}
 			class="px-4 py-2 rounded-full text-sm font-medium transition-colors {(page.url.searchParams.get(

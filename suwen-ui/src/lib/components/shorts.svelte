@@ -26,7 +26,7 @@
 		</Tooltip.Provider>
 	</div>
 	<div class="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-4">
-		{#each shorts as short}
+		{#each shorts as short (short.slug)}
 			<Tooltip.Provider delayDuration={0}>
 				<Tooltip.Root>
 					<Tooltip.Trigger

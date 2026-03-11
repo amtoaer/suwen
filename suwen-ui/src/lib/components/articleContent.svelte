@@ -117,7 +117,7 @@
 				AI 摘要
 			</h3>
 			<div class="text-gray-600">
-				{#each summary.split('\n').filter((line: string) => line.trim()) as line: string}
+				{#each summary.split('\n').filter((line: string) => line.trim()) as line: string (line)}
 					<p>{line}</p>
 				{/each}
 			</div>
@@ -173,6 +173,7 @@
 			</aside>
 		{/if}
 		<main bind:this={contentElement}>
+			<!-- eslint-disable-next-line -->
 			{@html content}
 		</main>
 	</div>
