@@ -7,9 +7,9 @@ use futures::TryStreamExt;
 use futures::stream::FuturesUnordered;
 use tokio::fs::{self, create_dir_all};
 use tokio::task::JoinSet;
-pub use xlog::import_file as XlogImporter;
 
-use crate::manager::Markdown;
+use crate::Markdown;
+pub use crate::importer::xlog::import_file as XlogImporter;
 
 pub async fn import_path<T, F>(source: PathBuf, output: PathBuf, obj_output: Option<PathBuf>, importer: T) -> Result<()>
 where
@@ -61,7 +61,7 @@ mod tests {
     use std::fs::read_to_string;
     use std::path::PathBuf;
 
-    use crate::manager::importer::{XlogImporter, import_path};
+    use crate::importer::{XlogImporter, import_path};
     use crate::parse_markdown;
 
     #[ignore = "only for manual test"]

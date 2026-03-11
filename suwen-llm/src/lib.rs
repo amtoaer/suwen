@@ -2,7 +2,7 @@ use anyhow::Result;
 use llm::builder::{LLMBackend, LLMBuilder};
 use llm::chat::ChatMessage;
 use suwen_config::CONFIG;
-
+use suwen_markdown::Markdown;
 mod utils;
 
 static PROMPT: &str = "
@@ -12,16 +12,30 @@ static PROMPT: &str = "
 请务必遵守所有格式和语气要求，仅输出摘要内容，不得包含任何前言、后记或解释性文字。
 ";
 
-pub async fn generate_article_summary(article: &str) -> Result<Option<String>> {
-    let llm = LLMBuilder::new()
-        .backend(LLMBackend::DeepSeek)
+pub async fn generate_article_summary(article: &Markdown) -> Result<Option<String>> {
+    if matches!(article, Markdown::Short { .. }) {
+        return Ok(None);
+    }
+    let mut llm = LLMBuilder::new()
+        .backend(LLMBackend::OpenAI)
         .system(PROMPT)
         .api_key(&CONFIG.openai_api_key)
-        .model("deepseek-chat")
+        .model(&CONFIG.openai_model)
         .timeout_seconds(60)
-        .temperature(1.2)
-        .stream(false)
-        .build()?;
-    let msgs = vec![ChatMessage::user().content(article).build()];
+        .temperature(1.2);
+    if let Some(base_url) = &CONFIG.openai_base_url {
+        llm = llm.base_url(base_url);
+    }
+    let llm = llm.build()?;
+    let msgs = vec![
+        ChatMessage::user()
+            .content(format!(
+                "标题：{}\n\n标签：{}\n\n内容：\n{}",
+                article.title(),
+                article.tags().join(", "),
+                article.content()
+            ))
+            .build(),
+    ];
     Ok(llm.chat(&msgs).await?.text().map(|s| utils::standardize_text(&s)))
 }

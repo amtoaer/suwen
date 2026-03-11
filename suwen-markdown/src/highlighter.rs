@@ -18,7 +18,7 @@ impl Highlighter {
     {
         let mut syntax = None;
         let mut in_code_block = false;
-        let mut to_hightlight = String::new();
+        let mut to_highlight = String::new();
         events
             .filter_map(|e| match e {
                 Event::Start(Tag::CodeBlock(kind)) => {
@@ -38,15 +38,15 @@ impl Highlighter {
                     }
                     let html = self
                         .highlighter
-                        .highlight(syntax.as_deref().unwrap_or("markdown"), &to_hightlight)
+                        .highlight(syntax.as_deref().unwrap_or("markdown"), &to_highlight)
                         .map(|v| Event::Html(CowStr::from(format!("<pre>{}</pre>", v))))
                         .context("Failed to highlight code block");
-                    to_hightlight.clear();
+                    to_highlight.clear();
                     in_code_block = false;
                     Some(html)
                 }
                 Event::Text(text) if in_code_block => {
-                    to_hightlight.push_str(&text);
+                    to_highlight.push_str(&text);
                     None
                 }
                 event => Some(Ok(event)),

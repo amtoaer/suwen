@@ -7,7 +7,7 @@
 		CarouselNext
 	} from '@/components/ui/carousel';
 
-	let { coverImages, title, content } = $props();
+	let { coverImages, title, content, renderedHtml } = $props();
 </script>
 
 <article class="max-w-4xl mx-auto">
@@ -30,6 +30,6 @@
 	</Carousel>
 	<span class="prose">
 		<h3>{title}</h3>
-		<p>{content}</p>
+		<p>{@html renderedHtml || content}</p>
 	</span>
 </article>

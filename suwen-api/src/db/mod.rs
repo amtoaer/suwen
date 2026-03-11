@@ -1,9 +1,7 @@
 mod kv;
 mod query;
-mod redis;
 mod schema;
 mod utils;
-use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -15,6 +13,7 @@ pub use sea_orm::DatabaseConnection;
 use sea_orm::sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sea_orm::sqlx::{ConnectOptions as SqlxConnectOptions, Sqlite};
 use sea_orm::{ConnectOptions, Database, SqlxSqliteConnector};
+pub use suwen_config::Lang;
 use suwen_migration::{Migrator, MigratorTrait};
 use tokio::fs::create_dir_all;
 
@@ -55,37 +54,4 @@ pub async fn database_connection() -> Result<DatabaseConnection> {
             .connect_with(connect_option)
             .await?,
     ))
-}
-
-#[derive(Clone, Copy)]
-pub enum Lang {
-    ZhCN,
-    EnUS,
-    JaJP,
-    KoKR,
-}
-
-impl Display for Lang {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Lang::ZhCN => write!(f, "zh-CN"),
-            Lang::EnUS => write!(f, "en-US"),
-            Lang::JaJP => write!(f, "ja-JP"),
-            Lang::KoKR => write!(f, "ko-KR"),
-        }
-    }
-}
-
-impl TryFrom<&str> for Lang {
-    type Error = &'static str;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "zh-CN" => Ok(Lang::ZhCN),
-            "en-US" => Ok(Lang::EnUS),
-            "ja-JP" => Ok(Lang::JaJP),
-            "ko-KR" => Ok(Lang::KoKR),
-            _ => Err("Unsupported language code"),
-        }
-    }
 }

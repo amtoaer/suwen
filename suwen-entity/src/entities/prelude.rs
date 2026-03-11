@@ -7,5 +7,4 @@ pub use super::content_metadata_tag::Entity as ContentMetadataTag;
 pub use super::identity::Entity as Identity;
 pub use super::like::Entity as Like;
 pub use super::site::Entity as Site;
-pub use super::tag::Entity as Tag;
 pub use super::user::Entity as User;

@@ -17,6 +17,7 @@ impl EntityName for Entity {
 pub struct Model {
     pub id: i32,
     pub slug: String,
+    pub content_hash: String,
     pub cover_images: VecString,
     pub tags: VecString,
     pub content_type: String,
@@ -33,6 +34,7 @@ pub struct Model {
 pub enum Column {
     Id,
     Slug,
+    ContentHash,
     CoverImages,
     Tags,
     ContentType,
@@ -69,6 +71,7 @@ impl ColumnTrait for Column {
         match self {
             Self::Id => ColumnType::Integer.def(),
             Self::Slug => ColumnType::Text.def().unique(),
+            Self::ContentHash => ColumnType::Text.def().unique(),
             Self::CoverImages => ColumnType::Text.def(),
             Self::Tags => ColumnType::Text.def(),
             Self::ContentType => ColumnType::Text.def(),
@@ -101,15 +104,6 @@ impl Related<super::content::Entity> for Entity {
 impl Related<super::content_metadata_tag::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ContentMetadataTag.def()
-    }
-}
-
-impl Related<super::tag::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::content_metadata_tag::Relation::Tag.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::content_metadata_tag::Relation::ContentMetadata.def().rev())
     }
 }
 

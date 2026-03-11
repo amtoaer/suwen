@@ -1,20 +1,16 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use chrono::Datelike;
-use dashmap::DashMap;
-use futures::TryStreamExt;
-use futures::stream::FuturesUnordered;
-use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::{NotSet, Set};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect,
-    QueryTrait, RelationTrait, TransactionTrait,
+    RelationTrait, TransactionTrait,
 };
 use suwen_entity::*;
 use suwen_llm::generate_article_summary;
-use suwen_markdown::manager::{Markdown, MarkdownManager};
-use suwen_migration::{Expr, OnConflict};
+use suwen_markdown::{Markdown, MarkdownChange};
+use suwen_migration::Expr;
 
 use crate::db::schema::{Archive, ArticleByList, ArticleBySlug, Short, Site, SitemapUrl, TagWithCount};
 use crate::db::utils::sha256_hash;
@@ -91,50 +87,8 @@ pub async fn init(conn: &DatabaseConnection) -> Result<()> {
         })
         .exec(&txn)
         .await?;
-        let all_markdown_files = MarkdownManager::new(
-            PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
-            None,
-        )
-        .all_markdown_files()
-        .await?;
-        // temp for rebuild database
-        let summary_cache: DashMap<String, Option<String>> = async {
-            let content = tokio::fs::read_to_string("/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache").await?;
-            let result = serde_json::from_str(&content)?;
-            Result::<_, anyhow::Error>::Ok(result)
-        }
-        .await
-        .ok()
-        .unwrap_or_default();
-        let tasks = all_markdown_files
-            .into_iter()
-            .map(|file| create_article(&txn, file, Lang::ZhCN, &summary_cache))
-            .collect::<FuturesUnordered<_>>();
-        tasks.try_collect::<Vec<_>>().await?;
         txn.commit().await?;
-        tokio::fs::write(
-            "/Users/amtoaer/Downloads/Zen/amtoaer/summary_cache",
-            serde_json::to_string(&summary_cache)?,
-        )
-        .await?;
     }
-    Ok(())
-}
-
-pub async fn update_articles(conn: &DatabaseConnection) -> Result<()> {
-    let all_markdown_files = MarkdownManager::new(
-        PathBuf::from("/Users/amtoaer/Downloads/Zen/amtoaer/notes-imported"),
-        None,
-    )
-    .all_markdown_files()
-    .await?;
-    let txn = conn.begin().await?;
-    let tasks = all_markdown_files
-        .into_iter()
-        .map(|file| update_article(&txn, file, Lang::ZhCN))
-        .collect::<FuturesUnordered<_>>();
-    tasks.try_collect::<Vec<_>>().await?;
-    txn.commit().await?;
     Ok(())
 }
 
@@ -237,6 +191,7 @@ pub async fn get_shorts(
         .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
+        .column_as(content::Column::RenderedHtml, "rendered_html")
         .inner_join(content::Entity)
         .filter(
             content_metadata::Column::ContentType
@@ -263,6 +218,7 @@ pub async fn get_short_by_slug(conn: &DatabaseConnection, slug: &str, lang: Lang
         .columns([content_metadata::Column::Slug, content_metadata::Column::CoverImages])
         .column_as(content::Column::Title, "title")
         .column_as(content::Column::OriginalText, "content")
+        .column_as(content::Column::RenderedHtml, "rendered_html")
         .inner_join(content::Entity)
         .filter(
             content_metadata::Column::ContentType
@@ -320,16 +276,11 @@ pub async fn increase_article_view_count(conn: &DatabaseConnection, slug: &str) 
 }
 
 pub async fn get_tags_with_count(conn: &DatabaseConnection) -> Result<Vec<TagWithCount>> {
-    Ok(tag::Entity::find()
+    Ok(content_metadata_tag::Entity::find()
         .select_only()
-        .column(tag::Column::TagName)
-        .join(JoinType::LeftJoin, tag::Relation::ContentMetadataTag.def())
-        .join(
-            JoinType::LeftJoin,
-            content_metadata_tag::Relation::ContentMetadata.def(),
-        )
-        .column_as(content_metadata::Column::Id.count(), "count")
-        .group_by(tag::Column::TagName)
+        .column(content_metadata_tag::Column::TagName)
+        .column_as(content_metadata_tag::Column::ContentMetadataId.count(), "count")
+        .group_by(content_metadata_tag::Column::TagName)
         .into_model::<TagWithCount>()
         .all(conn)
         .await?)
@@ -367,9 +318,9 @@ pub async fn get_articles_by_tag(
     sort_column: content_metadata::Column,
     limit: u64,
 ) -> Result<Vec<ArticleByList>> {
-    Ok(tag::Entity::find()
+    Ok(content_metadata_tag::Entity::find()
         .select_only()
-        .column(tag::Column::TagName)
+        .column(content_metadata_tag::Column::TagName)
         .columns([
             content_metadata::Column::Slug,
             content_metadata::Column::CoverImages,
@@ -384,7 +335,7 @@ pub async fn get_articles_by_tag(
         .inner_join(content_metadata::Entity)
         .join(JoinType::InnerJoin, content_metadata::Relation::Content.def())
         .filter(
-            tag::Column::TagName.eq(tag_name).and(
+            content_metadata_tag::Column::TagName.eq(tag_name).and(
                 content_metadata::Column::ContentType
                     .eq("article")
                     .and(content::Column::LangCode.eq(lang.to_string()))
@@ -398,171 +349,192 @@ pub async fn get_articles_by_tag(
         .await?)
 }
 
-pub async fn create_article(
-    conn: &impl ConnectionTrait,
-    mut markdown: Markdown,
-    lang: Lang,
-    summary_cache: &DashMap<String, Option<String>>,
-) -> Result<()> {
-    let (toc, rendered_html) = markdown.render_to_html()?;
-    let cover_images = markdown.extract_images()?;
-    markdown.strip_images()?;
-    match markdown {
-        Markdown::Article {
-            slug,
-            title,
-            tags,
-            content,
-            created_at,
-            updated_at,
-            published_at,
-        } => {
-            let summary = if let Some(cache) = summary_cache.get(&format!("{}-{}", slug, lang)) {
-                cache.value().clone()
-            } else {
-                let summary = generate_article_summary(&content).await?;
-                summary_cache.insert(format!("{}-{}", slug, lang), summary.clone());
-                summary
-            };
-            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
-                slug: Set(slug),
-                content_type: Set("article".into()),
-                cover_images: Set(cover_images.into()),
-                tags: Set(tags.clone().into()),
-                view_count: Set(0),
-                comment_count: Set(0),
-                created_at: Set(created_at),
-                updated_at: Set(updated_at),
-                published_at: Set(Some(published_at)),
-                original_lang: Set(lang.to_string()),
-                ..Default::default()
-            })
-            .exec(conn)
-            .await?;
-            content::Entity::insert(content::ActiveModel {
-                title: Set(title),
-                original_text: Set(content),
-                rendered_html: Set(rendered_html),
-                toc: Set(toc),
-                lang_code: Set(lang.to_string()),
-                summary: Set(summary),
-                content_metadata_id: Set(result.last_insert_id),
-                ..Default::default()
-            })
-            .exec(conn)
-            .await?;
-            if !tags.is_empty() {
-                let tag_models = tags
-                    .iter()
-                    .map(|tag| tag::ActiveModel {
-                        tag_name: Set(tag.clone()),
-                        ..Default::default()
-                    })
-                    .collect::<Vec<_>>();
-                tag::Entity::insert_many(tag_models)
-                    .on_conflict(OnConflict::column(tag::Column::TagName).do_nothing().to_owned())
-                    .do_nothing()
-                    .exec(conn)
-                    .await?;
-                let tag_records = tag::Entity::find()
-                    .filter(tag::Column::TagName.is_in(tags))
-                    .all(conn)
-                    .await?;
-                let tag_associations = tag_records
-                    .into_iter()
-                    .map(|tag| content_metadata_tag::ActiveModel {
-                        content_metadata_id: Set(result.last_insert_id),
-                        tag_id: Set(tag.id),
-                    })
-                    .collect::<Vec<_>>();
-                content_metadata_tag::Entity::insert_many(tag_associations)
-                    .exec(conn)
-                    .await?;
+pub async fn handle_markdown_change(conn: &DatabaseConnection, change: MarkdownChange) -> Result<()> {
+    match change {
+        MarkdownChange::Upsert(mut markdown) => {
+            let slug = markdown.slug().to_owned();
+            let cover_images = markdown.extract_images()?;
+            markdown.strip_images()?;
+            markdown.auto_format()?;
+            let content_hash = markdown.hash();
+            let existing = content_metadata::Entity::find()
+                .filter(content_metadata::Column::Slug.eq(&slug))
+                .one(conn)
+                .await?;
+            if let Some(metadata) = &existing
+                && content_hash == metadata.content_hash
+            {
+                info!("Content hash unchanged, skipping update: {}", &slug);
+                return Ok(());
             }
+            let summary = generate_article_summary(&markdown).await?;
+            let (toc, rendered_html) = markdown.render_to_html()?;
+            let txn = conn.begin().await?;
+            match existing {
+                Some(metadata) => {
+                    info!("Article already exists, updating: {}", &slug);
+                    update_article_internal(
+                        markdown,
+                        metadata,
+                        cover_images,
+                        summary,
+                        toc,
+                        rendered_html,
+                        content_hash,
+                        &txn,
+                    )
+                    .await?;
+                }
+                None => {
+                    info!("Article does not exist, creating: {}", &slug);
+                    create_article_internal(markdown, cover_images, summary, toc, rendered_html, content_hash, &txn)
+                        .await?;
+                }
+            }
+            txn.commit().await?;
+            info!("Article upserted: {}", &slug);
         }
-        Markdown::Short {
-            slug,
-            title,
-            content,
-            created_at,
-            updated_at,
-            published_at,
-        } => {
-            let result = content_metadata::Entity::insert(content_metadata::ActiveModel {
-                slug: Set(slug),
-                content_type: Set("gallery".into()),
-                cover_images: Set(cover_images.into()),
-                tags: Set(vec![].into()),
-                view_count: Set(0),
-                comment_count: Set(0),
-                original_lang: Set(lang.to_string()),
-                created_at: Set(created_at),
-                updated_at: Set(updated_at),
-                published_at: Set(Some(published_at)),
-                ..Default::default()
-            })
-            .exec(conn)
-            .await?;
-            content::Entity::insert(content::ActiveModel {
-                title: Set(title),
-                original_text: Set(content),
-                lang_code: Set(lang.to_string()),
-                content_metadata_id: Set(result.last_insert_id),
-                ..Default::default()
-            })
-            .exec(conn)
-            .await?;
+        MarkdownChange::Deleted(slug) => {
+            info!("Deleting article: {}", slug);
+            content_metadata::Entity::delete_many()
+                .filter(content_metadata::Column::Slug.eq(&slug))
+                .exec(conn)
+                .await?;
         }
-    };
+        MarkdownChange::SyncExisting(existing_slugs) => {
+            info!("Syncing existing articles, found {} files", existing_slugs.len());
+            content_metadata::Entity::delete_many()
+                .filter(content_metadata::Column::Slug.is_not_in(existing_slugs))
+                .exec(conn)
+                .await?;
+        }
+        MarkdownChange::Renamed(old_slug, new_slug) => {
+            info!("Renaming article from {} to {}", old_slug, new_slug);
+            content_metadata::Entity::update_many()
+                .filter(content_metadata::Column::Slug.eq(&old_slug))
+                .col_expr(content_metadata::Column::Slug, Expr::value(new_slug))
+                .exec(conn)
+                .await?;
+        }
+    }
     Ok(())
 }
 
-pub async fn update_article(conn: &impl ConnectionTrait, markdown: Markdown, lang: Lang) -> Result<()> {
-    let (toc, rendered_html) = markdown.render_to_html()?;
-    match markdown {
-        Markdown::Article {
-            slug, title, content, ..
-        } => {
-            content::Entity::update_many()
-                .filter(
-                    content::Column::LangCode.eq(lang.to_string()).and(
-                        content::Column::ContentMetadataId.in_subquery(
-                            content_metadata::Entity::find()
-                                .select_only()
-                                .column(content_metadata::Column::Id)
-                                .filter(content_metadata::Column::Slug.eq(&slug))
-                                .into_query(),
-                        ),
-                    ),
-                )
-                .col_expr(content::Column::Title, Expr::value(title))
-                .col_expr(content::Column::OriginalText, Expr::value(content))
-                .col_expr(content::Column::RenderedHtml, Expr::value(rendered_html))
-                .col_expr(content::Column::Toc, Expr::value(toc))
-                .exec(conn)
-                .await?;
-        }
-        Markdown::Short {
-            slug, title, content, ..
-        } => {
-            content::Entity::update_many()
-                .filter(
-                    content::Column::LangCode.eq(lang.to_string()).and(
-                        content::Column::ContentMetadataId.in_subquery(
-                            content_metadata::Entity::find()
-                                .select_only()
-                                .column(content_metadata::Column::Id)
-                                .filter(content_metadata::Column::Slug.eq(&slug))
-                                .into_query(),
-                        ),
-                    ),
-                )
-                .col_expr(content::Column::Title, Expr::value(title))
-                .col_expr(content::Column::OriginalText, Expr::value(content))
-                .exec(conn)
-                .await?;
-        }
+async fn create_article_internal(
+    markdown: Markdown,
+    cover_images: Vec<String>,
+    summary: Option<String>,
+    toc: Option<suwen_entity::Toc>,
+    rendered_html: Option<String>,
+    content_hash: String,
+    conn: &impl ConnectionTrait,
+) -> Result<()> {
+    let metadata = content_metadata::ActiveModel {
+        slug: Set(markdown.slug().to_owned()),
+        content_hash: Set(content_hash),
+        content_type: Set(markdown.content_type().to_owned()),
+        cover_images: Set(cover_images.into()),
+        tags: Set(markdown.tags().into()),
+        view_count: Set(0),
+        comment_count: Set(0),
+        created_at: markdown.created_at().map(Set).unwrap_or(NotSet),
+        updated_at: markdown.updated_at().map(Set).unwrap_or(NotSet),
+        published_at: markdown.published_at().map(|dt| Set(Some(dt))).unwrap_or(NotSet),
+        original_lang: Set(markdown.lang().to_string()),
+        ..Default::default()
     };
+    let metadata_id = content_metadata::Entity::insert(metadata)
+        .exec(conn)
+        .await?
+        .last_insert_id;
+
+    let content = content::ActiveModel {
+        title: Set(markdown.title().to_owned()),
+        original_text: Set(markdown.content().to_owned()),
+        rendered_html: Set(rendered_html),
+        toc: Set(toc),
+        lang_code: Set(markdown.lang().to_string()),
+        summary: Set(summary),
+        content_metadata_id: Set(metadata_id),
+        ..Default::default()
+    };
+    content::Entity::insert(content).exec(conn).await?;
+
+    let content_tags = markdown
+        .tags()
+        .into_iter()
+        .map(|tag| content_metadata_tag::ActiveModel {
+            content_metadata_id: Set(metadata_id),
+            tag_name: Set(tag),
+        })
+        .collect::<Vec<_>>();
+    if !content_tags.is_empty() {
+        content_metadata_tag::Entity::insert_many(content_tags)
+            .exec(conn)
+            .await?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn update_article_internal(
+    markdown: Markdown,
+    metadata: content_metadata::Model,
+    cover_images: Vec<String>,
+    summary: Option<String>,
+    toc: Option<suwen_entity::Toc>,
+    rendered_html: Option<String>,
+    content_hash: String,
+    conn: &impl ConnectionTrait,
+) -> Result<()> {
+    let metadata_id = metadata.id;
+    let metadata = content_metadata::ActiveModel {
+        content_hash: Set(content_hash),
+        content_type: Set(markdown.content_type().to_owned()),
+        cover_images: Set(cover_images.into()),
+        tags: Set(markdown.tags().into()),
+        updated_at: Set(chrono::Local::now()),
+        original_lang: Set(markdown.lang().to_string()),
+        ..metadata.into()
+    };
+    content_metadata::Entity::update(metadata).exec(conn).await?;
+
+    let content = content::Entity::find()
+        .filter(
+            content::Column::ContentMetadataId
+                .eq(metadata_id)
+                .and(content::Column::LangCode.eq(markdown.lang().to_string())),
+        )
+        .one(conn)
+        .await?
+        .context("no article found")?;
+    let content = content::ActiveModel {
+        title: Set(markdown.title().to_owned()),
+        original_text: Set(markdown.content().to_owned()),
+        rendered_html: Set(rendered_html),
+        toc: Set(toc),
+        summary: Set(summary),
+        ..content.into()
+    };
+    content::Entity::update(content).exec(conn).await?;
+
+    content_metadata_tag::Entity::delete_many()
+        .filter(content_metadata_tag::Column::ContentMetadataId.eq(metadata_id))
+        .exec(conn)
+        .await?;
+    let content_tags = markdown
+        .tags()
+        .into_iter()
+        .map(|tag| content_metadata_tag::ActiveModel {
+            content_metadata_id: Set(metadata_id),
+            tag_name: Set(tag),
+        })
+        .collect::<Vec<_>>();
+    if !content_tags.is_empty() {
+        content_metadata_tag::Entity::insert_many(content_tags)
+            .exec(conn)
+            .await?;
+    }
     Ok(())
 }
 

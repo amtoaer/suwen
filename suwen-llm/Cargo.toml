@@ -6,7 +6,9 @@ publish = { workspace = true }
 
 [dependencies]
 suwen_config = { workspace = true }
+suwen_markdown = { workspace = true }
 
 anyhow = { workspace = true }
 autocorrect = { workspace = true }
 llm = { workspace = true }
+tracing = { workspace = true }

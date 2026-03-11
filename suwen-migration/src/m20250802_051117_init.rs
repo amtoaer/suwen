@@ -53,6 +53,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_auto(ContentMetadata::Id))
                     .col(text(ContentMetadata::Slug).unique_key())
+                    .col(text(ContentMetadata::ContentHash).unique_key())
                     .col(text(ContentMetadata::CoverImages))
                     .col(text(ContentMetadata::Tags))
                     .col(text(ContentMetadata::ContentType))
@@ -101,38 +102,20 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Tag::Table)
-                    .if_not_exists()
-                    .col(pk_auto(Tag::Id))
-                    .col(text(Tag::TagName).unique_key())
-                    .col(date_time(Tag::CreatedAt).default(Expr::current_timestamp()))
-                    .to_owned(),
-            )
-            .await?;
-        manager
-            .create_table(
-                Table::create()
                     .table(ContentMetadataTag::Table)
                     .if_not_exists()
                     .col(integer(ContentMetadataTag::ContentMetadataId))
-                    .col(integer(ContentMetadataTag::TagId))
+                    .col(text(ContentMetadataTag::TagName))
                     .primary_key(
                         Index::create()
                             .col(ContentMetadataTag::ContentMetadataId)
-                            .col(ContentMetadataTag::TagId),
+                            .col(ContentMetadataTag::TagName),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_content_metadata_tag_content")
                             .from(ContentMetadataTag::Table, ContentMetadataTag::ContentMetadataId)
                             .to(ContentMetadata::Table, ContentMetadata::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk_content_metadata_tag_tag")
-                            .from(ContentMetadataTag::Table, ContentMetadataTag::TagId)
-                            .to(Tag::Table, Tag::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
@@ -273,7 +256,7 @@ impl MigrationTrait for Migration {
                 Index::create()
                     .name("idx_content_metadata_tag__tag")
                     .table(ContentMetadataTag::Table)
-                    .col(ContentMetadataTag::TagId)
+                    .col(ContentMetadataTag::TagName)
                     .to_owned(),
             )
             .await?;
@@ -336,7 +319,6 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(ContentMetadataTag::Table).to_owned())
             .await?;
-        manager.drop_table(Table::drop().table(Tag::Table).to_owned()).await?;
         manager
             .drop_table(Table::drop().table(Content::Table).to_owned())
             .await?;
@@ -381,6 +363,7 @@ enum ContentMetadata {
     Table,
     Id,
     Slug,
+    ContentHash,
     CoverImages,
     Tags,
     ContentType,
@@ -408,20 +391,11 @@ enum Content {
     Toc,
 }
 
-#[allow(clippy::enum_variant_names)]
-#[derive(DeriveIden)]
-enum Tag {
-    Table,
-    Id,
-    TagName,
-    CreatedAt,
-}
-
 #[derive(DeriveIden)]
 enum ContentMetadataTag {
     Table,
     ContentMetadataId,
-    TagId,
+    TagName,
 }
 
 #[derive(DeriveIden)]

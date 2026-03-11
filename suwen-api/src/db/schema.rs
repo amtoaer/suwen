@@ -66,6 +66,7 @@ pub struct Short {
     pub title: String,
     pub cover_images: VecString,
     pub content: String,
+    pub rendered_html: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
