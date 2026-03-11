@@ -18,7 +18,7 @@
 		</div>
 
 		<div class="flex items-center gap-2">
-			{#each relatedLinks as relatedLink}
+			{#each relatedLinks as relatedLink (relatedLink.url)}
 				<Button
 					variant="ghost"
 					size="icon"

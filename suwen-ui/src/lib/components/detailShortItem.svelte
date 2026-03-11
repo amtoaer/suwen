@@ -33,7 +33,7 @@
 				}}
 			/>
 			<CarouselContent class="h-48">
-				{#each coverImages as image}
+				{#each coverImages as image (image)}
 					<CarouselItem class="h-full">
 						<img
 							fetchpriority="high"

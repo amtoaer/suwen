@@ -116,7 +116,11 @@
 				<Sparkles class="w-4 h-4 mr-2" />
 				AI 摘要
 			</h3>
-			<p class="text-gray-600 whitespace-pre-wrap">{summary}</p>
+			<div class="text-gray-600">
+				{#each summary.split('\n').filter((line: string) => line.trim()) as line: string (line)}
+					<p>{line}</p>
+				{/each}
+			</div>
 		</div>
 	{/if}
 	<div class="relative">
@@ -169,6 +173,7 @@
 			</aside>
 		{/if}
 		<main bind:this={contentElement}>
+			<!-- eslint-disable-next-line -->
 			{@html content}
 		</main>
 	</div>

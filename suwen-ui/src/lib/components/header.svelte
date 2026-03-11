@@ -16,7 +16,7 @@
 				<h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{title}</h1>
 				<p class="text-sm sm:text-base text-gray-600 mt-2 mb-3 sm:mb-5">{description}</p>
 				<div class="flex items-center gap-3 pt-1 sm:pt-0">
-					{#each relatedLinks as relatedLink}
+					{#each relatedLinks as relatedLink (relatedLink.url)}
 						<Button
 							variant="ghost"
 							size="icon"

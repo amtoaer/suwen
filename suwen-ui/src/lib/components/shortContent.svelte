@@ -20,7 +20,7 @@
 	>
 		<CarouselPrevious class="top-1/2 left-4 z-10" />
 		<CarouselContent>
-			{#each coverImages as image}
+			{#each coverImages as image (image)}
 				<CarouselItem>
 					<img fetchpriority="high" src={image} alt={title} class="object-cover size-full" />
 				</CarouselItem>
@@ -30,6 +30,7 @@
 	</Carousel>
 	<span class="prose">
 		<h3>{title}</h3>
+		<!-- eslint-disable-next-line -->
 		<p>{@html renderedHtml || content}</p>
 	</span>
 </article>
