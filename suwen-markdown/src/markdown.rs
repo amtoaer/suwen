@@ -191,7 +191,9 @@ impl Markdown {
         }
         let content = tokio::fs::read_to_string(path).await?;
         let mut markdown = Self::from_string(&content, lang)?;
-        if let Some(new_slug) = path.file_stem().and_then(|s| s.to_str()) {
+        if markdown.slug().is_empty()
+            && let Some(new_slug) = path.file_stem().and_then(|s| s.to_str())
+        {
             match &mut markdown {
                 Markdown::Article { slug, .. } | Markdown::Short { slug, .. } => {
                     *slug = new_slug.to_string();

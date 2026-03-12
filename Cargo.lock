@@ -5642,6 +5642,7 @@ dependencies = [
  "aws-sdk-s3",
  "chrono",
  "clap",
+ "dashmap",
  "futures",
  "hex",
  "itertools",

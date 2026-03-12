@@ -15,6 +15,7 @@ aws-config = { workspace = true }
 aws-sdk-s3 = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true }
+dashmap = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
 lol_html = { workspace = true }

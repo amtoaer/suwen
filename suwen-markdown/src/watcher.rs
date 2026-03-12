@@ -2,10 +2,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
+use dashmap::DashMap;
 use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use notify::{EventKind, RecursiveMode};
 use notify_debouncer_full::{DebouncedEvent, new_debouncer};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tracing::{debug, info, warn};
 
 use crate::{Markdown, MarkdownProcessor};
@@ -43,15 +45,19 @@ impl MarkdownWatcher {
         })?;
         debouncer.watch(&self.watch_path, RecursiveMode::NonRecursive)?;
         info!("Started watching markdown files in {:?}", self.watch_path);
-
+        let pending_deletes = DashMap::new();
         while let Some(event) = rx.recv().await {
             debug!("Received file system event: {:?}", event);
-            self.handle_event(event).await?;
+            self.handle_event(event, &pending_deletes).await?;
         }
         Ok(())
     }
 
-    async fn handle_event(&self, event: DebouncedEvent) -> Result<()> {
+    async fn handle_event(
+        &self,
+        event: DebouncedEvent,
+        pending_deletes: &DashMap<String, JoinHandle<()>>,
+    ) -> Result<()> {
         let event = event.event;
         if event.paths.iter().any(|p| p.extension().is_none_or(|ext| ext != "md")) {
             return Ok(());
@@ -71,6 +77,12 @@ impl MarkdownWatcher {
             }
             EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
                 let path = &event.paths[0];
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+                    && let Some((_, handle)) = pending_deletes.remove(stem)
+                {
+                    info!("Cancel pending delete because of new modification: {}", stem);
+                    handle.abort();
+                }
                 match MarkdownProcessor::get().await.process_file(path).await {
                     Ok(markdown) => {
                         let _ = self.db_sender.send(MarkdownChange::Upsert(markdown));
@@ -83,7 +95,13 @@ impl MarkdownWatcher {
             EventKind::Remove(_) => {
                 let path = &event.paths[0];
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    let _ = self.db_sender.send(MarkdownChange::Deleted(stem.to_string()));
+                    let stem_owned = stem.to_owned();
+                    let sender = self.db_sender.clone();
+                    let handle = tokio::spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+                        let _ = sender.send(MarkdownChange::Deleted(stem_owned));
+                    });
+                    pending_deletes.insert(stem.to_string(), handle);
                 }
             }
             _ => {
