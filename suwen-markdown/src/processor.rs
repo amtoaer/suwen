@@ -59,6 +59,9 @@ impl MarkdownProcessor {
     pub async fn process_file(&self, path: &Path) -> Result<Markdown> {
         info!("Processing markdown file: {:?}", path);
         let mut markdown = Markdown::from_file(path, CONFIG.source_lang).await?;
+        if !markdown.should_publish() {
+            bail!("Markdown file is marked as draft, skipping: {:?}", path);
+        }
         let media_resources = markdown.extract_resources()?;
         if media_resources.is_empty() {
             debug!("No media resources found in markdown");

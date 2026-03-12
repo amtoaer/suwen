@@ -33,6 +33,7 @@ pub enum Markdown {
         cover_images: Option<Vec<String>>,
         #[serde(skip)]
         content: String,
+        publish: Option<bool>,
         created_at: Option<DateTime<Local>>,
         updated_at: Option<DateTime<Local>>,
         published_at: Option<DateTime<Local>>,
@@ -46,6 +47,7 @@ pub enum Markdown {
         cover_images: Option<Vec<String>>,
         #[serde(skip)]
         content: String,
+        publish: Option<bool>,
         created_at: Option<DateTime<Local>>,
         updated_at: Option<DateTime<Local>>,
         published_at: Option<DateTime<Local>>,
@@ -122,6 +124,13 @@ impl Markdown {
     pub fn published_at(&self) -> Option<DateTime<Local>> {
         match self {
             Markdown::Article { published_at, .. } | Markdown::Short { published_at, .. } => *published_at,
+        }
+    }
+
+    pub fn should_publish(&self) -> bool {
+        match self {
+            // 如果显式声明 publish = false，跳过发布
+            Markdown::Article { publish, .. } | Markdown::Short { publish, .. } => publish.unwrap_or(true),
         }
     }
 
