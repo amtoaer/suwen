@@ -222,9 +222,15 @@ impl MarkdownProcessor {
             Some("png") => "image/png",
             Some("gif") => "image/gif",
             Some("webp") => "image/webp",
+            Some("svg") => "image/svg+xml",
+            Some("ico") => "image/x-icon",
             Some("mp4") => "video/mp4",
             Some("webm") => "video/webm",
             Some("mov") => "video/quicktime",
+            Some("woff2") => "font/woff2",
+            Some("css") => "text/css; charset=utf-8",
+            Some("js") => "application/javascript; charset=utf-8",
+            Some("html") => "text/html; charset=utf-8",
             _ => "application/octet-stream",
         };
         self.s3_client
@@ -235,6 +241,60 @@ impl MarkdownProcessor {
             .content_type(content_type)
             .send()
             .await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio_stream::StreamExt;
+
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_upload_directory() -> Result<()> {
+        let processor = MarkdownProcessor::get().await;
+        let dir_path = PathBuf::from("/Users/amtoaer/backup/node_modules/icons");
+        let mut success_count = 0;
+        let mut failure_count = 0;
+        let semaphore = Semaphore::new(8);
+        let tasks = FuturesUnordered::new();
+        for entry in fs::read_dir(dir_path)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                let file_path = entry.path();
+                let file_name = entry.file_name().to_string_lossy().to_string();
+                let key = format!("icon/{}", file_name);
+                let processor = processor;
+                let semaphore_ref = &semaphore;
+                tasks.push(async move {
+                    let _permit = semaphore_ref.acquire().await?;
+                    match processor.upload_file(&key, tokio::fs::read(&file_path).await?).await {
+                        Ok(_) => {
+                            println!("Uploaded: {}/{}", processor.s3_domain, key);
+                            Ok(())
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to upload {}: {}", file_path.display(), e);
+                            Err(e)
+                        }
+                    }
+                });
+            }
+        }
+        tasks.collect::<Vec<_>>().await.into_iter().for_each(|result| {
+            if result.is_ok() {
+                success_count += 1;
+            } else {
+                failure_count += 1;
+            }
+        });
+        println!(
+            "Upload completed. Success: {}, Failure: {}",
+            success_count, failure_count
+        );
         Ok(())
     }
 }
